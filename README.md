@@ -1,2 +1,2 @@
-# WDPA_Manuals
-A repository for the WDPA Manuals.
+# protectedplanet-statistics
+A repository for collating and developing the models, scripts and methodologies for calculating the protectedplanet statistics.
