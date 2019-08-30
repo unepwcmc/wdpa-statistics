@@ -245,6 +245,10 @@ arcpy.AlterField_management("national_statistics_merge_summary_pivot","EEZ","pa_
 # combine the ABNJ and EEZ area per country into the pa_marine_area field
 arcpy.CalculateField_management("national_statistics_merge_summary_pivot","pa_marine_area","!ABNJ! + !pa_marine_area!","PYTHON_9.3")
 
+# recalculate two fields so that there are '0' instead of blank cells
+arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","ABNJ","updateValue(!ABNJ!)","def updateValue(value): if value == None: return '0' else: return value")
+arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","ABNJ","updateValue(!pa_marine_area!)","def updateValue(value): if value == None: return '0' else: return value")
+                                                                                                                     
 # delete the now redudndant ABNJ field
 arcpy.DeleteField_management("national_statistics_merge_summary_pivot","ABNJ")
 
@@ -349,12 +353,15 @@ arcpy.AlterField_management("pame_national_statistics_merge_summary_pivot","WDPA
 arcpy.AlterField_management("pame_national_statistics_merge_summary_pivot","Land","pame_pa_land_area")
 arcpy.AlterField_management("pame_national_statistics_merge_summary_pivot","EEZ","pame_pa_marine_area")
 
+# recalculate two fields so that there are '0' instead of blank cells
+arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","ABNJ","updateValue(!ABNJ!)","def updateValue(value): if value == None: return '0' else: return value")
+arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","ABNJ","updateValue(!pame_pa_marine_area!)","def updateValue(value): if value == None: return '0' else: return value")
+                                                                                                                               
 # combine the ABNJ and EEZ area per country into the pa_marine_area field
 arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","pame_pa_marine_area","!ABNJ! + !pame_pa_marine_area!","PYTHON_9.3")
 
 # delete the now redudndant ABNJ field
-arcpy.DeleteField_management("pame_national_statistics_merge_summary_pivot","ABNJ")
-
+arcpy.DeleteField_management("pame_national_statistics_merge_summary_pivot","ABNJ
 # add the fields to calculate percentage coverage
 arcpy.AddField_management("pame_national_statistics_merge_summary_pivot","pame_percentage_pa_land_cover","FLOAT")
 arcpy.AddField_management("pame_national_statistics_merge_summary_pivot","pame_percentage_pa_marine_cover","FLOAT")
