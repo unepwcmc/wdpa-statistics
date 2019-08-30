@@ -366,7 +366,7 @@ arcpy.JoinField_management("national_statistics_merge_summary_pivot","ISO3","pam
 arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","pame_percentage_pa_land_area","(!pame_pa_land_area! / !pa_land_area!)*100","PYTHON_9.3")
 arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","pame_percentage_pa_marine_area","(!pame_pa_marine_area! / !pa_marine_area!)*100","PYTHON_9.3")
 
-# Finish running scripts
+# Finish running scripts!
 #----------------------------------------------------------------------------------------------------------------------
 
 
