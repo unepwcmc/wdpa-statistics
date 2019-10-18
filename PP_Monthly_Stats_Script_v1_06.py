@@ -1,23 +1,29 @@
 # Name: Global coverage analysis script
-# Version: 1.3
+# Version: 1.7
 # Created on: 01/07/2019
+# Last updated on: 17/10/2019
 # Created by: Ed Lewis (edward.lewis@unep-wcmc.org)
 # Description: A script based on an Esri model to calculate PA coverage globally and nationally as well as calculating national
 # PAME statistics.
 
 #--------------------------------------------------------------------------------------------------------------------------
+### Stage 0: Define script inputs ###
 
 # import arcpy module
 import arcpy
 import os
+import time
 from arcpy import env
+
+#start the stopwatch
+start = time.clock()
 
 # enable the overwriting of outputs
 arcpy.env.overwriteOutput = True
 
 # define workspace to house all outputs from the script we want to keep
 arcpy.env.workspace = "C:\Users\EdwardL\Documents\ArcGIS\Default.gdb"
-workspace = "C:\Users\EdwardL\Documents\ArcGIS\Default.gdb"
+workspace = env.workspace
 
 # define the scratch workspace for outputs we dont want to keep
 arcpy.env.scratchWorkspace = "C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Primary.gdb"
@@ -44,9 +50,9 @@ in_points = r"E:\2019\Major_Jobs_2019\08492_WDPA\1_Monthly_Updates\02_August_201
 # WDPA Public polygons
 in_polygons = r"E:\2019\Major_Jobs_2019\08492_WDPA\1_Monthly_Updates\02_August_2019\WDPA_Aug2019_Public\WDPA_Aug2019_Public.gdb\WDPA_poly_Aug2019"
 # Basemap_spatial
-in_basemap_spat = r"C:\Users\EdwardL\Documents\Useful_Datasets\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models"
+in_basemap_spat = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models"
 # Basemap_tabular
-in_basemap_tab = r"C:\Users\EdwardL\Documents\Useful_Datasets\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models_tabular"
+in_basemap_tab = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models_tabular"
 # PAME sites
 in_pame_sites = r"C:\Users\EdwardL\Documents\ArcGIS\Restricted_Data.gdb\PAME_Sites"
 
@@ -66,6 +72,9 @@ out_all_polygons = "all_wdpa_polygons"
 
 #--------------------------------------------------------------------------------------------------------------------------
 # Stage 1: Global analysis
+
+print "Stage 1/3: Global analysis"
+
 # combine the point inputs together
 arcpy.Merge_management([in_points,in_restrict_chn_pnt], out_all_points)
 # combine the polygon inputs together
@@ -78,8 +87,6 @@ arcpy.RepairGeometry_management("all_wdpa_polygons","DELETE_NULL")
 # remove the sites that have an uncertain status or have potentially very innacruate areas
 arcpy.Select_analysis("all_wdpa_points", "all_wdpa_points_select","STATUS in ( 'Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
 arcpy.Select_analysis("all_wdpa_polygons", "all_wdpa_polygons_select","STATUS in ( 'Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
-
-#[how do i save these outputs to individual fds, or the scratch?]
 
 # convert the point selection into a polygon by buffering by the REP_AREA
 arcpy.AddField_management("all_wdpa_points_select","radius","DOUBLE")
@@ -100,68 +107,82 @@ arcpy.Union_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_union")
 # repair the output of the union
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union","DELETE_NULL")
 
-# intersect the output of the union with a basemap of the world. This splits each part of the venn diagram by land and marine
-# realms...there will be close to 1 million segments!
-arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_union",in_basemap_spat],"all_wdpa_polybuffpnt_union_intersect")
-
-# repair the output of the intersect
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_intersect","DELETE_NULL")
-
 # add xy coordinates for each of the ~1 million segments
-arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_intersect","CENTROID")
+arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union","CENTROID")
 
 # add a new field to concatenate the new x and y coordinate fields
-arcpy.AddField_management("all_wdpa_polybuffpnt_union_intersect","XYco","TEXT")
+arcpy.AddField_management("all_wdpa_polybuffpnt_union","XYco","TEXT")
 
 # populate this new XYco field
-arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_intersect","XYco","!CENTROID_X! + !CENTROID_Y!","PYTHON_9.3")
+arcpy.CalculateField_management("all_wdpa_polybuffpnt_union","XYco","!CENTROID_X! + !CENTROID_Y!","PYTHON_9.3")
 
 # run a summary of the XYco field, showing how many instances there are of each XYyco, i.e. how many segments have
 # exactly the same XYco, and by extension geometry.
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_intersect","xyco_count",[["XYco","COUNT"]],"XYco")
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union","xyco_count",[["XYco","COUNT"]],"XYco")
 
 # join the xyco summary table back to the spatial data by XYco - adding the XYco COUNT field to the spatial data
-arcpy.AddJoin_management("all_wdpa_polybuffpnt_union_intersect","XYco","xyco_count","XYco","KEEP_ALL")
+arcpy.AddJoin_management("all_wdpa_polybuffpnt_union","XYco","xyco_count","XYco","KEEP_ALL")
 
 # select out all of the segments which only have 1 XYco, i.e. the novel geometries with no overlaps within the WDPA
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union_intersect","all_wdpa_polybuffpnt_union_intersect_unique","COUNT_XYco = 1")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_unique","COUNT_XYco = 1")
 
 # select out all of the segments which have >1 XYco, i.e. geometries which overlap within the WDPA
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union_intersect","all_wdpa_polybuffpnt_union_intersect_duplicates","COUNT_XYco > 1")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_duplicates","COUNT_XYco > 1")
 
 # remove the overlaps within the duplicates
-arcpy.Dissolve_management("all_wdpa_polybuffpnt_union_intersect_duplicates","all_wdpa_polybuffpnt_union_intersect_duplicates_diss","")
-
-#[ADD BACK IN THE STATUS YR AS A STATISTIC FIELD ONCE THE SCRIPT IS FUNCTIONAL TO CREATE TIMESERIES DATA]
+arcpy.Dissolve_management("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_diss","XYco","STATUS_YR MIN ISO3 FIRST")
 
 # repair the flattened duplicates
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_intersect_duplicates_diss","DELETE_NULL")
-
-# [MOVE THE XYco and duplicate identification before the intersect - fewer segments and removes the secondary intersect]
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_duplicates_diss","DELETE_NULL")
 
 # recombine the unique geometries with the flattened duplicates
-arcpy.Merge_management(["all_wdpa_polybuffpnt_union_intersect_duplicates_diss", "all_wdpa_polybuffpnt_union_unique"], "all_wdpa_polybuffpnt_union_intersect_merge")
+arcpy.Merge_management(["all_wdpa_polybuffpnt_union_duplicates_diss", "all_wdpa_polybuffpnt_union_unique"], "all_wdpa_polybuffpnt_union_flat")
 
 # repair the recombined layer
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_intersect_merge","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL")
+
+# intersect it with the basemap
+arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_union_flat",in_basemap_spat],"all_wdpa_polybuffpnt_union_flat_intersect")
+
+# repair it
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_project","DELETE_NULL")
 
 # project it into mollweide, an equal area projection
-arcpy.Project_management("all_wdpa_polybuffpnt_union_intersect_merge","all_wdpa_polybuffpnt_union_intersect_merge_project",in_mollweideprj)
+arcpy.Project_management("all_wdpa_polybuffpnt_union_flat_intersect","all_wdpa_polybuffpnt_union_flat_intersect_project",in_mollweideprj)
 
 # repair it again
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_intersect_merge_project","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_project","DELETE_NULL")
 
 # add and calculate a new area field
-arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_intersect_merge_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
+arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
 
-# run summary statistics on the layer
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_intersect_merge_project","_summary_statistics_",[["POLY_AREA","SUM"]],"type")
+# now we get into a whole reem of summary statistics that have to created and rejigged in quite a specific way
+# for the explanation and underlying rationale for these decisions please see accompanying metadata.
 
+# run summary statistics on the layer globally
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_project","global_summary_statistics_",[["POLY_AREA","SUM"]],"type")
 
+# run some summary stats on the layer per year for timeseries figures
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_project","global_summary_statistics_temporal",[["POLY_AREA","SUM"]],["type","STATUS_YR"])
 
+# pivot this temporal summary table
+arcpy.PivotTable_management("_global_summary_statistics_temporal_","STATUS_YR","type","SUM_POLY_AREA","global_summary_statistics_temporal_pivot")
+
+# repeat the last two steps just for ABNJ geometries
+# select out just the rows with an ISO3 of 'ABNJ'
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_project", "ABNJ","ISO3 = 'ABNJ'")
+
+# run some summary stats on the ABNJ selection per year for timeseries figures
+arcpy.Statistics_analysis("ABNJ","abnj_global_summary_statistics_temporal",[["POLY_AREA","SUM"]],"STATUS_YR")
+
+# properly combining these output tables has to be done manually in excel.
+# this only takes 5 minutes and allows the user to sense check what the model has created.
 
 ##-------------------------------------------------------------------------------------------------------------------------
 #Stage 2: National analysis
+
+print "Stage 2/3: National Analyses"
+
 #This stage starts from the repaired polybuffpnt.
 
 # split the polybuffpnt depending on whether sites occur within one country or span multiple countries
@@ -245,10 +266,6 @@ arcpy.AlterField_management("national_statistics_merge_summary_pivot","EEZ","pa_
 # combine the ABNJ and EEZ area per country into the pa_marine_area field
 arcpy.CalculateField_management("national_statistics_merge_summary_pivot","pa_marine_area","!ABNJ! + !pa_marine_area!","PYTHON_9.3")
 
-# recalculate two fields so that there are '0' instead of blank cells
-arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","ABNJ","updateValue(!ABNJ!)","def updateValue(value): if value == None: return '0' else: return value")
-arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","ABNJ","updateValue(!pa_marine_area!)","def updateValue(value): if value == None: return '0' else: return value")
-                                                                                                                     
 # delete the now redudndant ABNJ field
 arcpy.DeleteField_management("national_statistics_merge_summary_pivot","ABNJ")
 
@@ -260,13 +277,13 @@ arcpy.AddField_management("national_statistics_merge_summary_pivot","percentage_
 arcpy.CalculateField_management("national_statistics_merge_summary_pivot","percentage_pa_land_area","(!pa_land_area! / !land_area!)*100","PYTHON_9.3")
 arcpy.CalculateField_management("national_statistics_merge_summary_pivot","percentage_pa_marine_area","(!pa_marine_area! / !marine_area!)*100","PYTHON_9.3")
 
-# run the ABNJ stats separately?
-
-
 
 
 #-----------------------------------------------------------------------------------------------------------------------
-#Stage 3: National PAME analysis 
+#Stage 3: National PAME analysis
+
+print "Stage 3/3: PAME analyses"
+
 #This stage also starts from the repaired polybuffpnt and repeats the national analysis using only those sites that have had a PAME analysis.
 
 # join the polybuffpnt to the PAME sites 
@@ -353,15 +370,12 @@ arcpy.AlterField_management("pame_national_statistics_merge_summary_pivot","WDPA
 arcpy.AlterField_management("pame_national_statistics_merge_summary_pivot","Land","pame_pa_land_area")
 arcpy.AlterField_management("pame_national_statistics_merge_summary_pivot","EEZ","pame_pa_marine_area")
 
-# recalculate two fields so that there are '0' instead of blank cells
-arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","ABNJ","updateValue(!ABNJ!)","def updateValue(value): if value == None: return '0' else: return value")
-arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","ABNJ","updateValue(!pame_pa_marine_area!)","def updateValue(value): if value == None: return '0' else: return value")
-                                                                                                                               
 # combine the ABNJ and EEZ area per country into the pa_marine_area field
 arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","pame_pa_marine_area","!ABNJ! + !pame_pa_marine_area!","PYTHON_9.3")
 
 # delete the now redudndant ABNJ field
-arcpy.DeleteField_management("pame_national_statistics_merge_summary_pivot","ABNJ
+arcpy.DeleteField_management("pame_national_statistics_merge_summary_pivot","ABNJ")
+
 # add the fields to calculate percentage coverage
 arcpy.AddField_management("pame_national_statistics_merge_summary_pivot","pame_percentage_pa_land_cover","FLOAT")
 arcpy.AddField_management("pame_national_statistics_merge_summary_pivot","pame_percentage_pa_marine_cover","FLOAT")
@@ -373,7 +387,13 @@ arcpy.JoinField_management("national_statistics_merge_summary_pivot","ISO3","pam
 arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","pame_percentage_pa_land_area","(!pame_pa_land_area! / !pa_land_area!)*100","PYTHON_9.3")
 arcpy.CalculateField_management("pame_national_statistics_merge_summary_pivot","pame_percentage_pa_marine_area","(!pame_pa_marine_area! / !pa_marine_area!)*100","PYTHON_9.3")
 
-# Finish running scripts!
+elapsed_hours = (time.clock() - start)/3600
+
+print "scripts finished - all good"
+print "Outputs are here: " + workspace
+print "Scripts took " + str(elapsed_hours) + " hours"
+                           
+# Finish running scripts
 #----------------------------------------------------------------------------------------------------------------------
 
 
