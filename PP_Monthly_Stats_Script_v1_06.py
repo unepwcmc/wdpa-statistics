@@ -15,7 +15,7 @@ import os
 import time
 from arcpy import env
 
-#start the stopwatch
+# start the stopwatch
 start = time.clock()
 
 # enable the overwriting of outputs
