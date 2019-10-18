@@ -1,4 +1,4 @@
-## A repository for analytical tools on the World Database on Protectd Areas.
+## A repository for analytical tools on the World Database on Protected Areas.
 
 ***
 
