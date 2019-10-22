@@ -1,10 +1,10 @@
 # Name: Global coverage analysis script
-# Version: 1.7
+# Version: 1.8
 # Created on: 01/07/2019
-# Last updated on: 17/10/2019
+# Last updated on: 22/10/2019
 # Created by: Ed Lewis (edward.lewis@unep-wcmc.org)
 # Description: A script based on an Esri model to calculate PA coverage globally and nationally as well as calculating national
-# PAME statistics.
+# PAME statistics. Script is written in Python 3 and normally run in ArcGIS Pro.
 
 #--------------------------------------------------------------------------------------------------------------------------
 ### Stage 0: Define script inputs ###
@@ -30,19 +30,6 @@ arcpy.env.scratchWorkspace = "C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Pri
 
 # define the projection files used to define outputs/workspaces
 in_mollweideprj = "C:\Users\EdwardL\Desktop\Temp_Files Of_Interest\moll_projection.prj"
-
-# create the feature datasets in your workspace to help structure your outputs
-# for initial outputs
-in_fd1 = arcpy.CreateFeatureDataset_management(workspace,"a_merged_inputs")
-# for outputs from the Union tool
-in_fd2 = arcpy.CreateFeatureDataset_management(workspace,"b_processed_inputs")
-# for outputs in the Mollweide projection
-in_fd2 = arcpy.CreateFeatureDataset_management(workspace,"c_area_outputs", in_mollweideprj)
-# for national outputs
-in_fd3 = arcpy.CreateFeatureDataset_management(workspace,"d_national_outputs")
-# for PAME national outputs
-in_fd4 = arcpy.CreateFeatureDataset_management(workspace,"e_national_pame_outputs")
-
 
 # define the script's inputs
 # WDPA Public points
@@ -73,7 +60,7 @@ out_all_polygons = "all_wdpa_polygons"
 #--------------------------------------------------------------------------------------------------------------------------
 # Stage 1: Global analysis
 
-print "Stage 1/3: Global analysis"
+print ("Stage 1/3: Global analysis")
 
 # combine the point inputs together
 arcpy.Merge_management([in_points,in_restrict_chn_pnt], out_all_points)
@@ -81,8 +68,8 @@ arcpy.Merge_management([in_points,in_restrict_chn_pnt], out_all_points)
 arcpy.Merge_management([in_polygons, in_restrict_chn_poly, in_restrict_shn_poly, in_restrict_est_poly], out_all_polygons)
 
 # repair geometries for newly merged files
-arcpy.RepairGeometry_management("all_wdpa_points","DELETE_NULL")
-arcpy.RepairGeometry_management("all_wdpa_polygons","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_points","DELETE_NULL",'OGC')
+arcpy.RepairGeometry_management("all_wdpa_polygons","DELETE_NULL", 'OGC')
 
 # remove the sites that have an uncertain status or have potentially very innacruate areas
 arcpy.Select_analysis("all_wdpa_points", "all_wdpa_points_select","STATUS in ( 'Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
@@ -99,13 +86,13 @@ arcpy.Merge_management(["all_wdpa_points_select_buff","all_wdpa_polygons_select"
 # this output (hereafter 'polybuffpnt') represents the starting point for the monthly release - it is all the sites we include
 # in the analysis in one file
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt","DELETE_NULL",'OGC')
 
 # split up the polybuffpnt using the Union tool - this splits up the WDPA like a Venn diagram
 arcpy.Union_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_union")
 
 # repair the output of the union
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union","DELETE_NULL",'OGC')
 
 # add xy coordinates for each of the ~1 million segments
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union","CENTROID")
@@ -133,25 +120,25 @@ arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_d
 arcpy.Dissolve_management("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_diss","XYco","STATUS_YR MIN ISO3 FIRST")
 
 # repair the flattened duplicates
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_duplicates_diss","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_duplicates_diss","DELETE_NULL",'OGC')
 
 # recombine the unique geometries with the flattened duplicates
 arcpy.Merge_management(["all_wdpa_polybuffpnt_union_duplicates_diss", "all_wdpa_polybuffpnt_union_unique"], "all_wdpa_polybuffpnt_union_flat")
 
 # repair the recombined layer
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL",'OGC')
 
 # intersect it with the basemap
 arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_union_flat",in_basemap_spat],"all_wdpa_polybuffpnt_union_flat_intersect")
 
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_project","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_project","DELETE_NULL",'OGC')
 
 # project it into mollweide, an equal area projection
 arcpy.Project_management("all_wdpa_polybuffpnt_union_flat_intersect","all_wdpa_polybuffpnt_union_flat_intersect_project",in_mollweideprj)
 
 # repair it again
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_project","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_project","DELETE_NULL",'OGC')
 
 # add and calculate a new area field
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
@@ -181,7 +168,7 @@ arcpy.Statistics_analysis("ABNJ","abnj_global_summary_statistics_temporal",[["PO
 ##-------------------------------------------------------------------------------------------------------------------------
 #Stage 2: National analysis
 
-print "Stage 2/3: National Analyses"
+print ("Stage 2/3: National Analyses")
 
 #This stage starts from the repaired polybuffpnt.
 
@@ -190,8 +177,8 @@ arcpy.Select_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_nontransbound
 arcpy.Select_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_transboundary","WDPA_ISO3 in ('BLM;GLP;MAF;MTQ', 'BLR;POL', 'CAN;USA', 'CHE;ITA', 'CIV;GIN', 'COG;CMR;CAF', 'CRI;PAN', 'FIN;SWE', 'FRA;ESP', 'FRA;ITA;MCO', 'LSO;ZAF', 'MNG;RUS', 'NLD;DEU;DNK', 'PRT;ESP', 'SVK;HUN', 'UKR;DEU;SVK', 'UZB;KGZ;KAZ', 'ZMB;ZWE')")
 
 # repair the geometries of both subsets
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary","DELETE_NULL")
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary","DELETE_NULL",'OGC')
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary","DELETE_NULL",'OGC')
 
 # flatten each subset - transboundary sites aren't flattened by country as their ISO3 values span several countries and are
 # unusable.....[RE-WRITE THIS]
@@ -199,22 +186,22 @@ arcpy.Dissolve_management("all_wdpa_polybuffpnt_nontransboundary","all_wdpa_poly
 arcpy.Dissolve_management("all_wdpa_polybuffpnt_transboundary","all_wdpa_polybuffpnt_transboundary_diss","")
 
 # repair the geometries of both subsets
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary_diss","DELETE_NULL")
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_diss","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary_diss","DELETE_NULL",'OGC')
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_diss","DELETE_NULL",'OGC')
 
 # erase the transboundary sites from the non-transboundary sites, identifying the novel area only they cover 
 arcpy.Erase_analysis("all_wdpa_polybuffpnt_transboundary_diss","all_wdpa_polybuffpnt_nontransboundary_diss","all_wdpa_polybuffpnt_transboundary_diss_novelarea")
 
 # repair the output from the erase
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_diss_novelarea","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_diss_novelarea","DELETE_NULL",'OGC')
 
 # intersect the novel area transboundary sites and the non-transboundary sites
 arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_transboundary_novelarea",in_basemap_spat],"all_wdpa_polybuffpnt_transboundary_novelarea_intersect")
 arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_nontransboundary_diss",in_basemap_spat],"all_wdpa_polybuffpnt_nontransboundary_diss_intersect")
 
 # repair the intersects
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary_diss_intersect","DELETE_NULL")
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_diss_novelarea_intersect","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary_diss_intersect","DELETE_NULL",'OGC')
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_diss_novelarea_intersect","DELETE_NULL",'OGC')
 
 # add a new field, "typeISO3"
 arcpy.AddField_management("all_wdpa_polybuffpnt_nontransboundary_diss_interect","typeISO3","TEXT")
@@ -282,7 +269,7 @@ arcpy.CalculateField_management("national_statistics_merge_summary_pivot","perce
 #-----------------------------------------------------------------------------------------------------------------------
 #Stage 3: National PAME analysis
 
-print "Stage 3/3: PAME analyses"
+print ("Stage 3/3: PAME analyses")
 
 #This stage also starts from the repaired polybuffpnt and repeats the national analysis using only those sites that have had a PAME analysis.
 
@@ -297,8 +284,8 @@ arcpy.Select_analysis("all_wdpa_polybuffpnt_pamesites","all_wdpa_polybuffpnt_pam
 arcpy.Select_analysis("all_wdpa_polybuffpnt_pamesites","all_wdpa_polybuffpnt_pamesites_transboundary","WDPA_ISO3 in ('BLM;GLP;MAF;MTQ', 'BLR;POL', 'CAN;USA', 'CHE;ITA', 'CIV;GIN', 'COG;CMR;CAF', 'CRI;PAN', 'FIN;SWE', 'FRA;ESP', 'FRA;ITA;MCO', 'LSO;ZAF', 'MNG;RUS', 'NLD;DEU;DNK', 'PRT;ESP', 'SVK;HUN', 'UKR;DEU;SVK', 'UZB;KGZ;KAZ', 'ZMB;ZWE')")
 
 # repair the geometries of both subsets
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_nontransboundary","DELETE_NULL")
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_nontransboundary","DELETE_NULL",'OGC')
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary","DELETE_NULL",'OGC')
 
 # flatten each subset - transboundary sites aren't flattened by country as their ISO3 values span several countries and are
 # unusable.....[RE-WRITE THIS]
@@ -306,22 +293,22 @@ arcpy.Dissolve_management("all_wdpa_polybuffpnt_pamesites_nontransboundary","all
 arcpy.Dissolve_management("all_wdpa_polybuffpnt_pamesites_transboundary","all_wdpa_polybuffpnt_pamesites_transboundary_diss","")
 
 # repair the geometries of both subsets
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_nontransboundary_diss","DELETE_NULL")
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_nontransboundary_diss","DELETE_NULL",'OGC')
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss","DELETE_NULL",'OGC')
 
 # erase the transboundary sites from the non-transboundary sites, identifying the novel area only they cover 
 arcpy.Erase_analysis("all_wdpa_polybuffpnt_pamesites_transboundary_diss","all_wdpa_polybuffpnt_pamesites_nontransboundary_diss","all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea")
 
 # repair the output from the erase
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea","DELETE_NULL",'OGC')
 
 # intersect the novel area transboundary sites and the non-transboundary sites
 arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_pamesites_transboundary_novelarea",in_basemap_spat],"all_wdpa_polybuffpnt_pamesites_transboundary_novelarea_intersect")
 arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_pamesites_nontransboundary_diss",in_basemap_spat],"all_wdpa_polybuffpnt_pamesites_nontransboundary_diss_intersect")
 
 # repair the intersects
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_nontransboundary_diss_intersect","DELETE_NULL")
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea_intersect","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_nontransboundary_diss_intersect","DELETE_NULL",'OGC')
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea_intersect","DELETE_NULL",'OGC')
 
 # add a new field, "typeISO3"
 arcpy.AddField_management("all_wdpa_polybuffpnt_pamesites_nontransboundary_diss_interect","typeISO3","TEXT")
