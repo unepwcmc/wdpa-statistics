@@ -1,7 +1,7 @@
 # Name: Global coverage analysis script
-# Version: 1.8
+# Version: 1.9
 # Created on: 01/07/2019
-# Last updated on: 01/11/2019
+# Last updated on: 05/11/2019
 # Created by: Ed Lewis (edward.lewis@unep-wcmc.org)
 # Description: A script based on an Esri model to calculate PA coverage globally and nationally as well as calculating national
 # PAME statistics.
@@ -33,9 +33,9 @@ in_mollweideprj = r"C:\Users\EdwardL\Desktop\Temp_Files Of_Interest\moll_project
 
 # define the scripts inputs
 # WDPA Public points
-in_points = r"E:\2019\Major_Jobs_2019\08492_WDPA\2_Country_Updates\RUS\0_WDPA_Data\WDPA_Oct2019_RUS-shapefile-points.shp"
+in_points = r"C:\Users\EdwardL\OneDrive - WCMC\WDPA\Monthly Versions\2019\November_2019\WDPA_Nov2019_Public\WDPA_Nov2019_Public.gdb\WDPA_point_Nov2019"
 # WDPA Public polygons
-in_polygons = r"E:\2019\Major_Jobs_2019\08492_WDPA\2_Country_Updates\RUS\0_WDPA_Data\WDPA_Oct2019_RUS-shapefile-polygons.shp"
+in_polygons = r"C:\Users\EdwardL\OneDrive - WCMC\WDPA\Monthly Versions\2019\November_2019\WDPA_Nov2019_Public\WDPA_Nov2019_Public.gdb\WDPA_poly_Nov2019"
 # Basemap_spatial
 in_basemap_spat = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models"
 # Basemap_tabular
@@ -88,7 +88,7 @@ arcpy.Merge_management(["all_wdpa_points_select_buff","all_wdpa_polygons_select"
 # this output (hereafter 'polybuffpnt') represents the starting point for the monthly release - it is all the sites we include
 # in the analysis in one file
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt","DELETE_NULL","OGC")
 
 # rename the ISO3 field in the WDPA to clarify it is the WDPA ISO3 and not a basemap ISO3
 arcpy.AlterField_management("all_wdpa_polybuffpnt","ISO3","WDPA_ISO3")
@@ -97,7 +97,7 @@ arcpy.AlterField_management("all_wdpa_polybuffpnt","ISO3","WDPA_ISO3")
 arcpy.Union_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_union")
 
 # repair the output of the union
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union","DELETE_NULL","OGC")
 
 # add xy coordinates for each of the ~1 million segments
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union","CENTROID")
@@ -128,25 +128,25 @@ arcpy.Select_analysis("all_wdpa_polybuffpnt_union",r"all_wdpa_polybuffpnt_union_
 arcpy.Dissolve_management("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_diss","xyco_count_XYco","all_wdpa_polybuffpnt_union_STATUS_YR MIN; all_wdpa_polybuffpnt_union_WDPA_ISO3 FIRST")
 
 # repair the flattened duplicates
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_duplicates_diss","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_duplicates_diss","DELETE_NULL","OGC")
 
 # recombine the unique geometries with the flattened duplicates
 arcpy.Merge_management(["all_wdpa_polybuffpnt_union_duplicates_diss", "all_wdpa_polybuffpnt_union_unique"], "all_wdpa_polybuffpnt_union_flat")
 
 # repair the recombined layer
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL","OGC")
 
 # intersect it with the basemap
 arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_union_flat",in_basemap_spat],"all_wdpa_polybuffpnt_union_flat_intersect")
 
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect","DELETE_NULL","OGC")
 
 # project it into mollweide, an equal area projection
 arcpy.Project_management("all_wdpa_polybuffpnt_union_flat_intersect","all_wdpa_polybuffpnt_union_flat_intersect_project",in_mollweideprj)
 
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect_project","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect_project","DELETE_NULL","OGC")
 
 # add and calculate a new area field
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersect_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
