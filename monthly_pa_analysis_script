@@ -1,7 +1,7 @@
 # Name: Global coverage analysis script
-# Version: 1.8
+# Version: 1.9
 # Created on: 01/07/2019
-# Last updated on: 01/11/2019
+# Last updated on: 05/11/2019
 # Created by: Ed Lewis (edward.lewis@unep-wcmc.org)
 # Description: A script based on an Esri model to calculate PA coverage globally and nationally as well as calculating national
 # PAME statistics.
@@ -22,20 +22,20 @@ start = time.clock()
 arcpy.env.overwriteOutput = True
 
 # define workspace to house all outputs from the script we want to keep
-arcpy.env.workspace = "C:\Users\EdwardL\Documents\ArcGIS\Default.gdb"
+arcpy.env.workspace = r"C:\Users\EdwardL\Documents\ArcGIS\Default.gdb"
 workspace = env.workspace
 
 # define the scratch workspace for outputs we dont want to keep
-arcpy.env.scratchWorkspace = "C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Primary.gdb"
+arcpy.env.scratchWorkspace = r"C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Primary.gdb"
 
 # define the projection files used to define outputs/workspaces
-in_mollweideprj = "C:\Users\EdwardL\Desktop\Temp_Files Of_Interest\moll_projection.prj"
+in_mollweideprj = r"C:\Users\EdwardL\Desktop\Temp_Files Of_Interest\moll_projection.prj"
 
 # define the scripts inputs
 # WDPA Public points
-in_points = r"E:\_Useful_Datasets_\Model_test_country\CHL_Test.gdb\CHL_Test_Pnt"
+in_points = r"C:\Users\EdwardL\OneDrive - WCMC\WDPA\Monthly Versions\2019\November_2019\WDPA_Nov2019_Public\WDPA_Nov2019_Public.gdb\WDPA_point_Nov2019"
 # WDPA Public polygons
-in_polygons = r"E:\_Useful_Datasets_\Model_test_country\BLM_model_testing.gdb\BLM_model_testing_subset"
+in_polygons = r"C:\Users\EdwardL\OneDrive - WCMC\WDPA\Monthly Versions\2019\November_2019\WDPA_Nov2019_Public\WDPA_Nov2019_Public.gdb\WDPA_poly_Nov2019"
 # Basemap_spatial
 in_basemap_spat = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models"
 # Basemap_tabular
@@ -70,12 +70,12 @@ arcpy.Merge_management([in_points,in_restrict_chn_pnt], out_all_points)
 arcpy.Merge_management([in_polygons, in_restrict_chn_poly, in_restrict_shn_poly, in_restrict_est_poly], out_all_polygons)
 
 # repair geometries for newly merged files
-arcpy.RepairGeometry_management("all_wdpa_points","DELETE_NULL")
-arcpy.RepairGeometry_management("all_wdpa_polygons","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_points","DELETE_NULL","OGC")
+arcpy.RepairGeometry_management("all_wdpa_polygons","DELETE_NULL","OGC")
 
 # remove the sites that have an uncertain status or have potentially very innacruate areas
-arcpy.Select_analysis("all_wdpa_points", r"in_memory\all_wdpa_points_select","STATUS in ( 'Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
-arcpy.Select_analysis("all_wdpa_polygons", r"in_memory\all_wdpa_polygons_select","STATUS in ( 'Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
+arcpy.Select_analysis("all_wdpa_points", "all_wdpa_points_select","STATUS in ( 'Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
+arcpy.Select_analysis("all_wdpa_polygons", "all_wdpa_polygons_select","STATUS in ( 'Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
 
 # convert the point selection into a polygon by buffering by the REP_AREA
 arcpy.AddField_management("all_wdpa_points_select","radius","DOUBLE")
@@ -88,7 +88,7 @@ arcpy.Merge_management(["all_wdpa_points_select_buff","all_wdpa_polygons_select"
 # this output (hereafter 'polybuffpnt') represents the starting point for the monthly release - it is all the sites we include
 # in the analysis in one file
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt","DELETE_NULL","OGC")
 
 # rename the ISO3 field in the WDPA to clarify it is the WDPA ISO3 and not a basemap ISO3
 arcpy.AlterField_management("all_wdpa_polybuffpnt","ISO3","WDPA_ISO3")
@@ -97,7 +97,7 @@ arcpy.AlterField_management("all_wdpa_polybuffpnt","ISO3","WDPA_ISO3")
 arcpy.Union_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_union")
 
 # repair the output of the union
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union","DELETE_NULL","OGC")
 
 # add xy coordinates for each of the ~1 million segments
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union","CENTROID")
@@ -106,7 +106,7 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union","CENTROID")
 arcpy.AddField_management("all_wdpa_polybuffpnt_union","XYco","TEXT")
 
 # populate this new XYco field
-arcpy.CalculateField_management("all_wdpa_polybuffpnt_union","XYco","!CENTROID_X! + !CENTROID_Y!","PYTHON_9.3")
+arcpy.CalculateField_management("all_wdpa_polybuffpnt_union","XYco","str(!CENTROID_X!) + str(!CENTROID_Y!)","PYTHON_9.3")
 
 # run a summary of the XYco field, showing how many instances there are of each XYyco, i.e. how many segments have
 # exactly the same XYco, and by extension geometry.
@@ -116,37 +116,37 @@ arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union","xyco_count",[["XYco","CO
 arcpy.AddJoin_management("all_wdpa_polybuffpnt_union","XYco","xyco_count","XYco","KEEP_ALL")
 
 # select out all of the segments which only have 1 XYco, i.e. the novel geometries with no overlaps within the WDPA
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union",r"in_memory\all_wdpa_polybuffpnt_union_unique","COUNT_XYco = 1")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_unique","COUNT_XYco = 1")
 
 ### JOIN NAMES HERE ARE CAUSING PROBLEMS - HOW TO GET AROUND THAT??
 ### DELETE SOME FIELDS?
 
 # select out all of the segments which have >1 XYco, i.e. geometries which overlap within the WDPA
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union",r"in_memory\all_wdpa_polybuffpnt_union_duplicates","COUNT_XYco > 1")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union",r"all_wdpa_polybuffpnt_union_duplicates","COUNT_XYco > 1")
 
 # remove the overlaps within the duplicates
-arcpy.Dissolve_management("all_wdpa_polybuffpnt_union_duplicates",r"in_memory\all_wdpa_polybuffpnt_union_duplicates_diss","xyco_count_XYco","all_wdpa_polybuffpnt_union_STATUS_YR MIN; all_wdpa_polybuffpnt_union_ISO3 FIRST")
+arcpy.Dissolve_management("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_diss","xyco_count_XYco","all_wdpa_polybuffpnt_union_STATUS_YR MIN; all_wdpa_polybuffpnt_union_WDPA_ISO3 FIRST")
 
 # repair the flattened duplicates
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_duplicates_diss","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_duplicates_diss","DELETE_NULL","OGC")
 
 # recombine the unique geometries with the flattened duplicates
 arcpy.Merge_management(["all_wdpa_polybuffpnt_union_duplicates_diss", "all_wdpa_polybuffpnt_union_unique"], "all_wdpa_polybuffpnt_union_flat")
 
 # repair the recombined layer
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL","OGC")
 
 # intersect it with the basemap
 arcpy.Intersect_analysis(["all_wdpa_polybuffpnt_union_flat",in_basemap_spat],"all_wdpa_polybuffpnt_union_flat_intersect")
 
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect","DELETE_NULL","OGC")
 
 # project it into mollweide, an equal area projection
 arcpy.Project_management("all_wdpa_polybuffpnt_union_flat_intersect","all_wdpa_polybuffpnt_union_flat_intersect_project",in_mollweideprj)
 
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect_project","DELETE_NULL")
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect_project","DELETE_NULL","OGC")
 
 # add and calculate a new area field
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersect_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
@@ -165,7 +165,7 @@ arcpy.PivotTable_management("global_summary_statistics_temporal","all_wdpa_polyb
 
 # repeat the last two steps just for ABNJ geometries
 # select out just the rows with an ISO3 of 'ABNJ'
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project","ABNJ_sites","all_wdpa_polybuffpnt_union_ISO3 = 'ABNJ'")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project","ABNJ_sites","all_wdpa_polybuffpnt_union_WDPA_ISO3 = 'ABNJ'")
 
 # run some summary stats on the ABNJ selection per year for timeseries figures
 arcpy.Statistics_analysis("ABNJ_sites","abnj_global_summary_statistics_temporal",[["AREA_GEO","SUM"]],"all_wdpa_polybuffpnt_union_STATUS_YR")
@@ -174,12 +174,12 @@ arcpy.Statistics_analysis("ABNJ_sites","abnj_global_summary_statistics_temporal"
 # this only takes 5 minutes and allows the user to sense check what the model has created.
 
 elapsed_hours = (time.clock() - start)/3600
-print "Stage 1 took " + str(elapsed_hours) + " hours"
+print(("Stage 1 took " + str(elapsed_hours) + " hours"))
 
 ##-------------------------------------------------------------------------------------------------------------------------
 #Stage 2: National analysis
 
-print "Stage 2/3: National Analyses"
+print ("Stage 2/3: National Analyses")
 
 # this stage starts from the repaired polybuffpnt.
 
@@ -199,7 +199,7 @@ arcpy.Dissolve_management("all_wdpa_polybuffpnt_transboundary",r"in_memory\all_w
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary_diss","DELETE_NULL")
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_diss","DELETE_NULL")
 
-# erase the transboundary sites from the non-transboundary sites, identifying the novel area only they cover 
+# erase the transboundary sites from the non-transboundary sites, identifying the novel area only they cover
 arcpy.Erase_analysis("all_wdpa_polybuffpnt_transboundary_diss","all_wdpa_polybuffpnt_nontransboundary_diss","all_wdpa_polybuffpnt_transboundary_diss_novelarea")
 
 # repair the output from the erase
@@ -224,7 +224,7 @@ arcpy.CalculateField_management("all_wdpa_polybuffpnt_transboundary_diss_novelar
 
 # project both transboundary and nontransboundary features into Mollweide
 arcpy.Project_management("all_wdpa_polybuffpnt_nontransboundary_diss_intersect","all_wdpa_polybuffpnt_nontransboundary_diss_intersect_project",in_mollweideprj)
-arcpy.Project_management("all_wdpa_polybuffpnt_transboundary_diss_novelarea_intersect","all_wdpa_polybuffpnt_transboundary_diss_novelarea_intersect_project",in_mollweideprj)                
+arcpy.Project_management("all_wdpa_polybuffpnt_transboundary_diss_novelarea_intersect","all_wdpa_polybuffpnt_transboundary_diss_novelarea_intersect_project",in_mollweideprj)
 
 # add and calculate a new area field
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_nontransboundary_diss_intersect_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
@@ -278,9 +278,9 @@ arcpy.CalculateField_management("national_statistics_merge_summary_pivot","perce
 # There is not an automated QC process for the stats yet however so we suggest that the table is copied into the Excel template and compared to the previous month's stats etc
 
 elapsed_hours = (time.clock() - start)/3600
-                            
-print "Stage 2 took " + str(elapsed_hours) + " hours"
-print "almost there..."
+
+print (("Stage 2 took " + str(elapsed_hours) + " hours"))
+print ("almost there...")
 
 #-----------------------------------------------------------------------------------------------------------------------
 #Stage 3: National PAME analysis
@@ -289,11 +289,11 @@ print "Stage 3/3: PAME analyses"
 
 #This stage also starts from the repaired polybuffpnt and repeats the national analysis using only those sites that have had a PAME analysis.
 
-# join the polybuffpnt to the PAME sites 
+# join the polybuffpnt to the PAME sites
 arcpy.JoinField_management("all_wdpa_polybuffpnt","WDPAID",in_pame_sites,"wdpaid","ass_id")
 
 # select out the sites that have had a pame assessment
-arcpy.Select_analysis("all_wdpa_polybuffpnt", "all_wdpa_polybuffpnt_pamesites","ass_id >= 1")                          
+arcpy.Select_analysis("all_wdpa_polybuffpnt", "all_wdpa_polybuffpnt_pamesites","ass_id >= 1")
 
 # split the pame polybuffpnt depending on whether sites occur within one country or span multiple countries
 arcpy.Select_analysis("all_wdpa_polybuffpnt_pamesites","all_wdpa_polybuffpnt_pamesites_nontransboundary","WDPA_ISO3 IN ('ABNJ', 'ABW', 'AFG', 'AGO', 'AIA', 'ALA', 'ALB', 'AND', 'ARE', 'ARG', 'ARM', 'ASM', 'ATA', 'ATF', 'ATG', 'AUS', 'AUT', 'AZE', 'BDI', 'BEL', 'BEN', 'BES', 'BFA', 'BGD', 'BGR', 'BHR', 'BHS', 'BIH', 'BLM', 'BLR', 'BLZ', 'BMU', 'BOL', 'BRA', 'BRB', 'BRN', 'BTN', 'BVT', 'BWA', 'CAF', 'CAN', 'CCK', 'CHE', 'CHL', 'CHN', 'CIV', 'CMR', 'COD', 'COG', 'COK', 'COL', 'COM', 'CPV', 'CRI', 'CUB', 'CUW', 'CXR', 'CYM', 'CYP', 'CZE', 'DEU', 'DJI', 'DMA', 'DNK', 'DOM', 'DZA', 'ECU', 'EGY', 'ERI', 'ESH', 'ESP', 'EST', 'ETH', 'FIN', 'FJI', 'FLK', 'FRA', 'FRO', 'FSM', 'GAB', 'GBR', 'GEO', 'GGY', 'GHA', 'GIB', 'GIN', 'GLP', 'GMB', 'GNB', 'GNQ', 'GRC', 'GRD', 'GRL', 'GTM', 'GUF', 'GUM', 'GUY', 'HKG', 'HMD', 'HND', 'HRV', 'HTI', 'HUN', 'IDN', 'IMN', 'IND', 'IOT', 'IRL', 'IRN', 'IRQ', 'ISL', 'ISR', 'ITA', 'JAM', 'JEY', 'JOR', 'JPN', 'KAZ', 'KEN', 'KGZ', 'KHM', 'KIR', 'KNA', 'KOR', 'KWT', 'LAO', 'LBN', 'LBR', 'LBY', 'LCA', 'LIE', 'LKA', 'LSO', 'LTU', 'LUX', 'LVA', 'MAF', 'MAR', 'MCO', 'MDA', 'MDG', 'MDV', 'MEX', 'MHL', 'MKD', 'MLI', 'MLT', 'MMR', 'MNE', 'MNG', 'MNP', 'MOZ', 'MRT', 'MSR', 'MTQ', 'MUS', 'MWI', 'MYS', 'MYT', 'NAM', 'NCL', 'NER', 'NFK', 'NGA', 'NIC', 'NIU', 'NLD', 'NOR', 'NPL', 'NZL', 'OMN', 'PAK', 'PAN', 'PCN', 'PER', 'PHL', 'PLW', 'PNG', 'POL', 'PRI', 'PRK', 'PRT', 'PRY', 'PSE', 'PYF', 'QAT', 'REU', 'ROU', 'RUS', 'RWA', 'SAU', 'SDN', 'SEN', 'SGP', 'SGS', 'SHN', 'SJM', 'SLB', 'SLE', 'SLV', 'SPM', 'SRB', 'SSD', 'STP', 'SUR', 'SVK', 'SVN', 'SWE', 'SWZ', 'SXM', 'SYC', 'SYR', 'TCA', 'TCD', 'TGO', 'THA', 'TJK', 'TKL', 'TKM', 'TLS', 'TON', 'TTO', 'TUN', 'TUR', 'TUV', 'TWN', 'TZA', 'UGA', 'UKR', 'UMI', 'URY', 'USA', 'UZB', 'VCT', 'VEN', 'VGB', 'VIR', 'VNM', 'VUT', 'WLF', 'WSM', 'YEM', 'ZAF', 'ZMB', 'ZWE')")
@@ -312,7 +312,7 @@ arcpy.Dissolve_management("all_wdpa_polybuffpnt_pamesites_transboundary","all_wd
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_nontransboundary_diss","DELETE_NULL")
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss","DELETE_NULL")
 
-# erase the transboundary sites from the non-transboundary sites, identifying the novel area only they cover 
+# erase the transboundary sites from the non-transboundary sites, identifying the novel area only they cover
 arcpy.Erase_analysis("all_wdpa_polybuffpnt_pamesites_transboundary_diss","all_wdpa_polybuffpnt_pamesites_nontransboundary_diss","all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea")
 
 # repair the output from the erase
@@ -337,7 +337,7 @@ arcpy.CalculateField_management("all_wdpa_polybuffpnt_pamesites_transboundary_di
 
 # project both transboundary and nontransboundary features into Mollweide
 arcpy.Project_management("all_wdpa_polybuffpnt_pamesites_nontransboundary_diss_intersect","all_wdpa_polybuffpnt_pamesites_nontransboundary_diss_intersect_project",in_mollweideprj)
-arcpy.Project_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea_intersect","all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea_intersect_project",in_mollweideprj)                
+arcpy.Project_management("all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea_intersect","all_wdpa_polybuffpnt_pamesites_transboundary_diss_novelarea_intersect_project",in_mollweideprj)
 
 # add and calculate a new area field
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_pamesites_nontransboundary_diss_intersect","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
@@ -395,8 +395,6 @@ elapsed_hours = (time.clock() - start)/3600
 print "scripts finished - all good"
 print "Outputs are here: " + workspace
 print "Total running time: " + str(elapsed_hours) + " hours"
-                           
+
 # Finish running scripts
 #----------------------------------------------------------------------------------------------------------------------
-
-
