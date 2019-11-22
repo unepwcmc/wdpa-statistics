@@ -2,7 +2,7 @@
 # Purpose: A script based on an Esri model to calculate PA coverage globally and nationally as well as calculating national and PAME statistics.
 # Author: Ed Lewis (edward.lewis@unep-wcmc.org)
 # Created: 01/07/2019
-# Last updated: 20/11/2019
+# Last updated: 22/11/2019
 # ArcGIS Version: Pro(2.1+)
 # Python: 3.1+
 
@@ -54,6 +54,10 @@ in_restrict_shn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subs
 # restricted EST polygons
 in_restrict_cdda_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
 
+
+## We should add in a bootleg here which creates STATUS_YR values for those sites which have a STATUS_YR of 0
+## We should also add in a branch of this script which uses a raster approach -  for countries - splits by attribute - raster - calculate split out - combine back
+
 #--------------------------------------------------------------------------------------------------------------------------
 # Stage 1: Global analysis
 
@@ -79,6 +83,7 @@ arcpy.PairwiseBuffer_analysis(r"in_memory\all_wdpa_points_select",r"in_memory\al
 
 # combine the poly selection with the buffered point selection
 # the output (hereafter 'polybuffpnt') represents the starting point for the monthly release - it is all the sites we include in the analysis in one file
+## IF you want to do count analyses then do it on *this* file
 arcpy.Merge_management([r"in_memory\all_wdpa_points_select_buff",r"in_memory\all_wdpa_polygons_select"],"all_wdpa_polybuffpnt")
 
 # repair the polybuffpnt
@@ -104,28 +109,41 @@ arcpy.CalculateField_management("all_wdpa_polybuffpnt_union","XYco","str(!CENTRO
 
 # run a summary of the XYco field, showing how many instances there are of each XYyco, i.e. how many segments have
 # exactly the same XYco, and by extension geometry.
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union","xyco_count",[["XYco","COUNT"]],"XYco")
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union",r"in_memory\xyco_count",[["XYco","COUNT"]],"XYco")
 
 # join (add) the XYco field from the summary table to the output of the union
-arcpy.JoinField_management("all_wdpa_polybuffpnt_union","XYco","xyco_count","XYco","COUNT_XYco")
+arcpy.JoinField_management("all_wdpa_polybuffpnt_union","XYco",r"in_memory\xyco_count","XYco","COUNT_XYco")
 
 # clean up some redundant fields
 arcpy.DeleteField_management("all_wdpa_polybuffpnt_union",["BUFF_DIST","CENTROID_X","CENTROID_Y","FID_all_wdpa_polybuffpnt","OBJECTID","OBJECTID_1","ORIG_FID","radius"])
 
 # select out all of the segments which only have 1 XYco, i.e. the novel geometries with no overlaps within the WDPA
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union",r"in_memory\all_wdpa_polybuffpnt_union_unique","COUNT_XYco = 1")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_unique","COUNT_XYco = 1")
 
 # select out all of the segments which have >1 XYco, i.e. geometries which overlap within the WDPA
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union",r"in_memory\all_wdpa_polybuffpnt_union_duplicates","COUNT_XYco > 1")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_duplicates","COUNT_XYco > 1")
 
-# remove the overlaps within the duplicates
-arcpy.PairwiseDissolve_analysis(r"in_memory\all_wdpa_polybuffpnt_union_duplicates",r"in_memory\all_wdpa_polybuffpnt_union_duplicates_diss","XYco","STATUS_YR MIN; WDPA_ISO3 FIRST")
+# run a summary report listing the lowest STATUS_YR for each duplicate area by XYco
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_duplicates","duplicates_earliest_sum",[["STATUS_YR","MIN"]],"XYco")
 
-# repair the flattened duplicates
-arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_union_duplicates_diss","DELETE_NULL","OGC")
+# make a copy of the duplicates
+arcpy.Copy_management("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_flat")
 
-# recombine the unique geometries with the flattened duplicates
-arcpy.Merge_management([r"in_memory\all_wdpa_polybuffpnt_union_duplicates_diss", r"in_memory\all_wdpa_polybuffpnt_union_unique"], "all_wdpa_polybuffpnt_union_flat")
+# delete all identical XYcos from the copied duplicates, we don't care about the values, just the geometreis and making it flat
+arcpy.DeleteIdentical_management("all_wdpa_polybuffpnt_union_duplicates_flat","XYco")
+
+# join the summary report to the copied duplicates
+arcpy.JoinField_management("all_wdpa_polybuffpnt_union_duplicates_flat","XYco","duplicates_earliest_sum","XYco","MIN_status_yr")
+
+# recalculate status_yr so that each XYco has the earliest status_yr that geometry had
+arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_duplicates_flat","STATUS_YR","!MIN_status_yr!")
+
+# remove the field
+arcpy.DeleteField_management("all_wdpa_polybuffpnt_union_duplicates_flat","MIN_status_yr")
+
+# merge these site back into the unique geometries - creating a flat layer which has the whole WDPA schema populated still.
+## If you want to do count analyses do it on the polybuffpnt, if you want to do spatial analyses, do it with this file.
+arcpy.Merge_management(["all_wdpa_polybuffpnt_union_duplicates_flat","all_wdpa_polybuffpnt_union_unique"],"all_wdpa_polybuffpnt_union_flat")
 
 # repair the recombined layer
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL","OGC")
@@ -151,11 +169,21 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersec
 # run summary statistics on the layer globally
 arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project","global_summary_statistics",[["AREA_GEO","SUM"]],"type")
 
+# run summary statistics on the layer regionally
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project","regional_summary_statistics",[["AREA_GEO","SUM"]],["sdg_region","type"])
+
+# pivot this regioanl summary table
+arcpy.PivotTable_management("regional_summary_statistics",["sdg_region"],"type","SUM_AREA_GEO","regional_summary_statistics_pivot")
+
 # run some summary stats on the layer per year for timeseries figures
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project",r"in_memory\global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type","STATUS_YR"])
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project","global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR","sdg_region"])
 
 # pivot this temporal summary table
-arcpy.PivotTable_management(r"in_memory\global_summary_statistics_temporal","STATUS_YR","type","SUM_AREA_GEO","global_summary_statistics_temporal_pivot")
+arcpy.PivotTable_management("global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO","global_summary_statistics_temporal_pivot")
+
+## WE NEED TO WORK OUT HOW TO COMBINE THE ABNJ SUMMARY TABLES TO THE OTHER SUMMARY TABLES AND CREATE THE SUMMARY TABLES ENTIRELY IN AN ARCGIS ENVIRONMENT
+## EEZ = EEZ + ABNJ
+## JOIN BY STATUS_YR - RECALCULATE FIELD
 
 # repeat the last two steps just for ABNJ geometries
 # select out just the rows with an ISO3 of 'ABNJ'
