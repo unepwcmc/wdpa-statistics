@@ -13,11 +13,11 @@
 import arcpy
 import os
 import time
+import urllib.request
 from arcpy import env
 
 #start the stopwatch
 start = time.clock()
-
 # enable the overwriting of outputs
 arcpy.env.overwriteOutput = True
 
@@ -33,9 +33,9 @@ in_mollweideprj = r"C:\Users\EdwardL\Desktop\Temp_Files Of_Interest\moll_project
 
 # define the scripts inputs
 # WDPA Public points
-in_points = r"E:\_Useful_Datasets_\Model_test_country\CHL_Test.gdb\CHL_Test_Pnt"
+in_points = r"E:\_Useful_Datasets_\Model_test_country\large_subset.gdb\large_test_input_pnt"
 # WDPA Public polygons
-in_polygons = r"E:\_Useful_Datasets_\Model_test_country\BLM_model_testing.gdb\BLM_model_testing_subset"
+in_polygons = r"E:\_Useful_Datasets_\Model_test_country\large_subset.gdb\large_test_input_poly"
 # Basemap_spatial
 in_basemap_spat = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models"
 # Basemap_tabular
@@ -62,8 +62,41 @@ out_national_temporal_schema_pame = r"C:\Users\EdwardL\Documents\ArcGIS\Default.
 out_sbafolder = r"C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Secondary.gdb"
 
 ## We should add in a bootleg here which creates STATUS_YR values for those sites which have a STATUS_YR of 0
+##  To reflect this uncertainty, a year was randomly assigned from another protected area within the same country, and repeated this procedure 1,000 times, with the median plotted.
+
+#listname = []
+#cursor = arcpy.da.SearchCursor("input_layer", "STATUS_YR")
+
+#max_value = -99999999
+#min_value = 3000
+#with arcpy.da.SearchCursor(centerline, "STATUS_YR") as cursor:
+    #for row in cursor:
+        #max_value = max(int(row[0]), max_value)
+        #min_value = min(int(row[0]), min_value)
+# rand = random.randint(min_value,max_value)
+
+# codeblock 3
+#in_codeblock3 = """
+#def updateValue(value):
+  #if value == '0':
+  #return rand
+  #else: return value"""
+
+# arcpy.CalculateField_management("input_layer","STATUS_YR","updateValue(!STATUS_YR!)","PYTHON_9.3", in_codeblock3)
 
 #--------------------------------------------------------------------------------------------------------------------------
+# Stage 0: Download the data
+
+# not ready yet - how to deal with a wcmc.io link?
+# use the date function and a dictionary of names to test the download URL, with an if function, if URL 'like' Dec 2020 then stop, if not LIKE then run
+# it could be run each day until the download link changes adn then it will run assigning the workspace from teh start
+
+#print ('Downloading the latest WDPA from Protected Planet....')
+#url = 'wcmc.io/wdpa_current_release'
+#urllib.request.urlretrieve(url)
+
+#--------------------------------------------------------------------------------------------------------------------------
+
 # Stage 1: Global and Regional analysis
 
 print ("Stage 1 of 2: Global and Regional analysis")
@@ -335,19 +368,22 @@ for fc in out_sba:
     # run a union, add in an xyco for each segment
     arcpy.Union_analysis(fc,r"in_memory\Union")
     arcpy.RepairGeometry_management(r"in_memory\union","DELETE_NULL","OGC")
-    arcpy.AddGeometryAttributes_management(r"in_memory\union","CENTROID")
-    arcpy.AddField_management(r"in_memory\union","XYco","TEXT")
-    arcpy.CalculateField_management(r"in_memory\union","XYco","str(!CENTROID_X!) + str(!CENTROID_Y!)","PYTHON_9.3")
 
     # split it up further by intersecting each country with the basemap
     arcpy.PairwiseIntersect_analysis([r"in_memory\union",in_basemap_spat],r"in_memory\intersect")
     arcpy.RepairGeometry_management(r"in_memory\intersect","DELETE_NULL","OGC")
 
-    # run two summary reports per segment, working out the minimum STATUS_YR and the maximum ass_id (i.e. whether assessed or not)
+    # assign a unique id to each parcel
+    arcpy.AddGeometryAttributes_management(r"in_memory\intersect","CENTROID")
+    arcpy.AddField_management(r"in_memory\intersect","XYco","TEXT")
+    arcpy.CalculateField_management(r"in_memory\intersect","XYco","str(!CENTROID_X!) + str(!CENTROID_Y!)","PYTHON_9.3")
+
+    # run two summary reports per parcel, working out the minimum STATUS_YR and the maximum ass_id (i.e. whether assessed or not)
     arcpy.Statistics_analysis(r"in_memory\intersect",r"in_memory\out_styr_stats",[["STATUS_YR","MIN"]],"XYco")
     arcpy.Statistics_analysis(r"in_memory\intersect",r"in_memory\out_assid_stats",[["ass_id","MAX"]],"XYco")
 
     # delete identical (XYco) - (i.e. make it flat, removing intra-national overlaps), and repair it
+    # save this outputs not in memory to see if it has overlaps if the output stats still aren't correct
     arcpy.DeleteIdentical_management(r"in_memory\intersect","XYco")
     arcpy.RepairGeometry_management(r"in_memory\intersect","DELETE_NULL","OGC")
 
@@ -359,18 +395,18 @@ for fc in out_sba:
     out_proj = desc.basename+"_union_intersect_project"
     arcpy.Project_management(r"in_memory\intersect",out_proj,in_mollweideprj)
     arcpy.RepairGeometry_management(out_proj,"DELETE_NULL","OGC")
-    arcpy.AddGeometryAttributes_management(out_proj,"AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
+    arcpy.AddGeometryAttributes_management(out_proj,"AREA","","SQUARE_KILOMETERS",in_mollweideprj)
 
     # for national reporting they can't report by ABNJ, so we treat areas in geographical ABNJ as actually being part of the ISO3's EEZ
     arcpy.CalculateField_management(out_proj,"type","!type!.replace('ABNJ','EEZ')", 'PYTHON3')
 
     # create national pa summary statistics
-    arcpy.Statistics_analysis(out_proj,r"in_memory\out_styr_sum_current",[["AREA_GEO","SUM"]],["WDPA_ISO3","type"])
+    arcpy.Statistics_analysis(out_proj,r"in_memory\out_styr_sum_current",[["POLY_AREA","SUM"]],["WDPA_ISO3","type"])
     out_styr_sum_temporal = desc.basename+"_summary"
-    arcpy.Statistics_analysis(out_proj,r"in_memory\out_styr_sum_temporal",[["AREA_GEO","SUM"]],["WDPA_ISO3","MIN_STATUS_YR","type"])
+    arcpy.Statistics_analysis(out_proj,r"in_memory\out_styr_sum_temporal",[["POLY_AREA","SUM"]],["WDPA_ISO3","MIN_STATUS_YR","type"])
 
     # pivot the national temporal pa summary
-    arcpy.PivotTable_management(r"in_memory\out_styr_sum_temporal",["WDPA_ISO3","MIN_STATUS_YR"],"type","SUM_AREA_GEO",r"in_memory\out_styr_sum_temporal_pivot")
+    arcpy.PivotTable_management(r"in_memory\out_styr_sum_temporal",["WDPA_ISO3","MIN_STATUS_YR"],"type","SUM_POLY_AREA",r"in_memory\out_styr_sum_temporal_pivot")
 
     # update current national field names (if they exist), replace <Null> with 0, add ABNJ area to EEZ field
     if len(arcpy.ListFields(r"in_memory\out_styr_sum_temporal_pivot","WDPA_ISO3"))!=0:
@@ -396,8 +432,8 @@ for fc in out_sba:
     arcpy.Select_analysis(out_proj,r"in_memory\out_ass_sites","MAX_ass_id >= 1")
 
     # create national pa PAME summary statistics
-    arcpy.Statistics_analysis(r"in_memory\out_ass_sites",r"in_memory\out_ass_sum_current",[["AREA_GEO","SUM"]],["WDPA_ISO3","type"])
-    arcpy.Statistics_analysis(r"in_memory\out_ass_sites",r"in_memory\out_ass_sum_temporal",[["AREA_GEO","SUM"]],["WDPA_ISO3","MIN_STATUS_YR","type"])
+    arcpy.Statistics_analysis(r"in_memory\out_ass_sites",r"in_memory\out_ass_sum_current",[["POLY_AREA","SUM"]],["WDPA_ISO3","type"])
+    arcpy.Statistics_analysis(r"in_memory\out_ass_sites",r"in_memory\out_ass_sum_temporal",[["POLY_AREA","SUM"]],["WDPA_ISO3","MIN_STATUS_YR","type"])
 
     # append each of the national pa PAME coverage tables into a clean precooked schema and all of the temporal PAME data into another clean precooked schema
     arcpy.Append_management(r"in_memory\out_ass_sum_current",out_national_current_schema_pame,"NO_TEST")
