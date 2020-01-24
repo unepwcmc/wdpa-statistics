@@ -7,13 +7,14 @@
 # Python: 3.1+
 
 #--------------------------------------------------------------------------------------------------------------------------
-### Stage 0: Define script inputs ###
+# Preamble: Define the script workspaces
 
 # import arcpy module
 import arcpy
 import os
 import time
 import urllib.request
+import zipfile
 from arcpy import env
 
 #start the stopwatch
@@ -21,26 +22,69 @@ start = time.clock()
 # enable the overwriting of outputs
 arcpy.env.overwriteOutput = True
 
-# define workspace to house all outputs from the script we want to keep
-arcpy.env.workspace = r"C:\Users\EdwardL\Documents\ArcGIS\Default.gdb"
-workspace = env.workspace
+# define root folder for all outputs
+rootfolder = r"C:\Users\EdwardL\Downloads"
+pactfolder = arcpy.CreateFolder_management(rootfolder,"PACT_script")
+outputfolder = arcpy.CreateFolder_management(pactfolder,"PACT_outputs")
+inputfolder = arcpy.CreateFolder_management(pactfolder,"PACT_inputs")
 
-# define the scratch workspace for outputs we dont want to keep
-arcpy.env.scratchWorkspace = r"C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Primary.gdb"
+# create a new file geodatabase in the root folder for all the script outputs
+workspace = arcpy.CreateFileGDB_management(outputfolder,"PACT_script_outputs")
+
+# define the scratch workspace for outputs we dont want to keep, this will be deleted at the end of the script
+scratchworkspace = arcpy.CreateFileGDB_management(outputfolder,"PACT_script_scratch_workspace")
+
+#--------------------------------------------------------------------------------------------------------------------------
+
+# Stage 0: Download the data
+
+print ("Stage 0: Download the WDPA")
+
+# downloads the most recent version of the WDPA from Protected Planet and saves it in the root directory
+print ('Downloading the latest WDPA from Protected Planet....')
+
+url = r'http://wcmc.io/wdpa_current_release'
+filename = str(inputfolder) + r"\\WDPA_Latest.zip"
+targetfile = urllib.request.urlretrieve(url, filename)
+
+print ('Unzipping the WDPA')
+# unzips the folder to enable the file geodatabase to be queried, also in the root directory
+handle = zipfile.ZipFile(filename)
+handle.extractall(str(inputfolder))
+handle.close
+
+env.workspace = str(inputfolder)
+
+# list the gdbs in the inputfolder
+gdbs = arcpy.ListWorkspaces("*", "FileGDB")
+
+# for the gdb in the inputfolder, list the feature classes that are in the gdb
+for gdb in gdbs:
+    env.workspace = gdb
+    fcs = arcpy.ListFeatureClasses()
+
+# the first feature class is the point, the second feature class is the polygon
+pointinput = fcs[0]
+polygoninput = fcs[1]
+
+# concatenate the file paths to specify the exact inputs for the script
+in_points = gdb + "\\" + pointinput
+in_polygons = gdb + "\\" + polygoninput
 
 # define the projection files used to define outputs/workspaces
 in_mollweideprj = r"C:\Users\EdwardL\Desktop\Temp_Files Of_Interest\moll_projection.prj"
 
 # define the scripts inputs
 # WDPA Public points
-in_points = r"E:\_Useful_Datasets_\Model_test_country\large_subset.gdb\large_test_input_pnt"
+#in_points = r"E:\_Useful_Datasets_\Model_test_country\large_subset.gdb\large_test_input_pnt"
 # WDPA Public polygons
-in_polygons = r"E:\_Useful_Datasets_\Model_test_country\large_subset.gdb\large_test_input_poly"
+#in_polygons = r"E:\_Useful_Datasets_\Model_test_country\large_subset.gdb\large_test_input_poly"
 # Basemap_spatial
 in_basemap_spat = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models"
 # Basemap_tabular
 in_basemap_tab = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models_tabular"
 # PAME sites
+## DOWNLOAD THIS TOO LIKE THE WDPA??
 in_pame_sites = r"C:\Users\EdwardL\Documents\ArcGIS\Restricted_Data.gdb\PAME_Sites"
 
 # define the scripts restricted inputs - only accessible for UNEP-WCMC
@@ -61,8 +105,7 @@ out_national_temporal_schema_pame = r"C:\Users\EdwardL\Documents\ArcGIS\Default.
 # define the output for the sba
 out_sbafolder = r"C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Secondary.gdb"
 
-## We should add in a bootleg here which creates STATUS_YR values for those sites which have a STATUS_YR of 0
-##  To reflect this uncertainty, a year was randomly assigned from another protected area within the same country, and repeated this procedure 1,000 times, with the median plotted.
+# create a bootleg for making a STATUS_YR value for those that dont have one based upon the STATUS_YR values of other pas, repeated 1000 times and the median taken
 
 #listname = []
 #cursor = arcpy.da.SearchCursor("input_layer", "STATUS_YR")
@@ -85,28 +128,12 @@ out_sbafolder = r"C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Secondary.gdb"
 # arcpy.CalculateField_management("input_layer","STATUS_YR","updateValue(!STATUS_YR!)","PYTHON_9.3", in_codeblock3)
 
 #--------------------------------------------------------------------------------------------------------------------------
-# Stage 0: Download the data
-
-print ("Stage 0: Download the WDPA")
-
-# downloads the most recent version of the WDPA from Protected Planet and saves it in the root directory
-print ('Downloading the latest WDPA from Protected Planet....')
-
-url = r'http://wcmc.io/wdpa_current_release'
-filename = 'WDPA_Latest_Public.zip'
-urllib.request.urlretrieve(url, filename)
-
-# unzips the folder to enable the file geodatabase to be queried, also in the root directory
-## UNFINISHED
-
-## LINK THIS TO THE INPUTS, DO A 'LIST IN' SORT OF THING SO THAT ONLY THE RESTRICTED SITES NEED TO BE SPECIFIED
-## DO A USER INPUT REQUEST SO THAT THE USER CAN SPECIFY WHETHER THEY WANT TO USE RESTRICTED DATA
-## DO THIS FOR POINTS ALSO OR SOMETHING, RIGHT AT THE BEGINNING
-#--------------------------------------------------------------------------------------------------------------------------
 
 # Stage 1: Global and Regional analysis
 
 print ("Stage 1 of 2: Global and Regional analysis")
+
+arcpy.env.workspace = str(workspace)
 
 # combine the point inputs together
 arcpy.Merge_management([in_points,in_restrict_chn_pnt], "all_points")
