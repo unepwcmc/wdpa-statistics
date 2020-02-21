@@ -2,7 +2,7 @@
 # Purpose: A script based on an Esri model to calculate PA coverage globally, regionally and nationally as well as calculating national and PAME statistics.
 # Author: Ed Lewis (edward.lewis@unep-wcmc.org)
 # Created: 01/07/2019
-# Last updated: 15/01/2020
+# Last updated: 21/02/2020
 # ArcGIS Version: Pro(2.1+)
 # Python: 3.1+
 
@@ -15,6 +15,7 @@ import os
 import time
 import urllib.request
 import zipfile
+import random
 from arcpy import env
 
 #start the stopwatch
@@ -26,6 +27,7 @@ arcpy.env.overwriteOutput = True
 rootfolder = r"C:\Users\EdwardL\Downloads"
 pactfolder = arcpy.CreateFolder_management(rootfolder,"PACT_script")
 outputfolder = arcpy.CreateFolder_management(pactfolder,"PACT_outputs")
+sbafolder = arcpy.CreateFileGDB_management(outputfolder,"SBA_outputs")
 inputfolder = arcpy.CreateFolder_management(pactfolder,"PACT_inputs")
 
 # create a new file geodatabase in the root folder for all the script outputs
@@ -36,9 +38,28 @@ scratchworkspace = arcpy.CreateFileGDB_management(outputfolder,"PACT_script_scra
 
 #--------------------------------------------------------------------------------------------------------------------------
 
-# Stage 0: Download the data
+# Stage 0.1: Specify file paths for files not automated into script if you want to run
 
-print ("Stage 0: Download the WDPA")
+# Do you have access to the restricted protected area data? If you do not then put False
+restricted = True
+
+# if you have access to the restricted data then copy the file paths here:
+if restricted == True:
+    # restricted CHN points
+    in_restrict_chn_pnt = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model_pnt"
+    # restricted CHN polygons
+    in_restrict_chn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model"
+    # restricted SHN polygons
+    in_restrict_shn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
+    # restricted EST polygons
+    in_restrict_cdda_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
+
+## MAKE THIS AN IF FUNCTION TOO? CAN YOU DO IT WITH ALL THE SUMMARY TABLES
+# do you want to collect PAME statistics? If you do not then put False
+in_pame_sites = r"C:\Users\EdwardL\Documents\ArcGIS\Restricted_Data.gdb\PAME_Sites"
+
+#------------------------------------------------------------------------------------------------------------------------
+print ("Stage 0: Download the inputs")
 
 # downloads the most recent version of the WDPA from Protected Planet and saves it in the root directory
 print ('Downloading the latest WDPA from Protected Planet....')
@@ -47,7 +68,7 @@ url = r'http://wcmc.io/wdpa_current_release'
 filename = str(inputfolder) + r"\\WDPA_Latest.zip"
 targetfile = urllib.request.urlretrieve(url, filename)
 
-print ('Unzipping the WDPA')
+print ('Unzipping the WDPA...')
 # unzips the folder to enable the file geodatabase to be queried, also in the root directory
 handle = zipfile.ZipFile(filename)
 handle.extractall(str(inputfolder))
@@ -63,69 +84,65 @@ for gdb in gdbs:
     env.workspace = gdb
     fcs = arcpy.ListFeatureClasses()
 
-# the first feature class is the point, the second feature class is the polygon
-pointinput = fcs[0]
-polygoninput = fcs[1]
-
 # concatenate the file paths to specify the exact inputs for the script
-in_points = gdb + "\\" + pointinput
-in_polygons = gdb + "\\" + polygoninput
+in_points = gdb + "\\" + fcs[0]
+in_polygons = gdb + "\\" + fcs[1]
+
+# download teh supporting files from the github repo
+print('Downloading the supporting files from Eds GitHub repo....')
+
+url = r'http://github.com/EdwardMLewis/wdpa-statistics/archive/master.zip'
+filename = str(inputfolder) + r"\\supporting_files.zip"
+targetfile = urllib.request.urlretrieve(url, filename)
+
+print ('Unzipping the supporting files...')
+# unzips the folder to enable the file geodatabase to be queried, also in the root directory
+handle = zipfile.ZipFile(filename)
+handle.extractall(str(inputfolder))
+handle.close
+
+# rename the github repo folder to something mroe sensible
+# scripts to do that.....
 
 # define the projection files used to define outputs/workspaces
-in_mollweideprj = r"C:\Users\EdwardL\Desktop\Temp_Files Of_Interest\moll_projection.prj"
+in_mollweideprj = str(inputfolder) + "\\supporting_files\moll_projection.prj"
 
-# define the scripts inputs
-# WDPA Public points
-#in_points = r"E:\_Useful_Datasets_\Model_test_country\large_subset.gdb\large_test_input_pnt"
-# WDPA Public polygons
-#in_polygons = r"E:\_Useful_Datasets_\Model_test_country\large_subset.gdb\large_test_input_poly"
-# Basemap_spatial
-in_basemap_spat = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models"
-# Basemap_tabular
-in_basemap_tab = r"E:\_Useful_Datasets_\WVS_Jan_16\SDG_Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models_tabular"
-# PAME sites
-## DOWNLOAD THIS TOO LIKE THE WDPA??
-in_pame_sites = r"C:\Users\EdwardL\Documents\ArcGIS\Restricted_Data.gdb\PAME_Sites"
+print('Downloading the basemaps from XXXX')
 
-# define the scripts restricted inputs - only accessible for UNEP-WCMC
-# restricted CHN points
-in_restrict_chn_pnt = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model_pnt"
-# restricted CHN polygons
-in_restrict_chn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model"
-# restricted SHN polygons
-in_restrict_shn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
-# restricted EST polygons
-in_restrict_cdda_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
+url = r'ENTER THE BASEMAP FILE PATH HERE'
+filename = str(inputfolder) + r"\\basemaps.zip"
+targetfile = urllib.request.urlretrieve(url, filename)
 
-out_national_current_schema = r"C:\Users\EdwardL\Documents\ArcGIS\Default.gdb\national_current_schema"
-out_national_temporal_schema = r"C:\Users\EdwardL\Documents\ArcGIS\Default.gdb\national_temporal_schema"
-out_national_current_schema_pame = r"C:\Users\EdwardL\Documents\ArcGIS\Default.gdb\national_current_schema_pame"
-out_national_temporal_schema_pame = r"C:\Users\EdwardL\Documents\ArcGIS\Default.gdb\national_temporal_schema_pame"
+print ('Unzipping the supporting files...')
+# unzips the folder to enable the file geodatabase to be queried, also in the root directory
+handle = zipfile.ZipFile(filename)
+handle.extractall(str(inputfolder))
+handle.close
 
-# define the output for the sba
-out_sbafolder = r"C:\Users\EdwardL\Documents\ArcGIS\Modelbuilder_Secondary.gdb"
 
-# create a bootleg for making a STATUS_YR value for those that dont have one based upon the STATUS_YR values of other pas, repeated 1000 times and the median taken
 
-#listname = []
-#cursor = arcpy.da.SearchCursor("input_layer", "STATUS_YR")
 
-#max_value = -99999999
-#min_value = 3000
-#with arcpy.da.SearchCursor(centerline, "STATUS_YR") as cursor:
-    #for row in cursor:
-        #max_value = max(int(row[0]), max_value)
-        #min_value = min(int(row[0]), min_value)
-# rand = random.randint(min_value,max_value)
 
-# codeblock 3
-#in_codeblock3 = """
-#def updateValue(value):
-  #if value == '0':
-  #return rand
-  #else: return value"""
 
-# arcpy.CalculateField_management("input_layer","STATUS_YR","updateValue(!STATUS_YR!)","PYTHON_9.3", in_codeblock3)
+# spatial basemap - country boundaries etc
+in_basemap_spat = str(inputfolder) + "\\basemaps\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models.shp"
+
+# tabular basemap - country boundaries info as table
+in_basemap_tab = str(inputfolder) + "\\basemaps\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models_tabular.dbf"
+
+
+# create the summary tables for appending in individual natioanl summary statistics
+oncs = arcpy.CreateTable_management(workspace,"out_national_current_schema")
+arcpy.AddFields_management(oncs,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
+
+onts = arcpy.CreateTable_management(workspace,"out_national_current_schema")
+arcpy.AddFields_management(onts,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
+
+oncsp = arcpy.CreateTable_management(workspace,"out_national_current_schema")
+arcpy.AddFields_management(oncsp,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
+
+ontsp = arcpy.CreateTable_management(workspace,"out_national_current_schema")
+arcpy.AddFields_management(ontsp,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
 
 #--------------------------------------------------------------------------------------------------------------------------
 
@@ -135,31 +152,42 @@ print ("Stage 1 of 2: Global and Regional analysis")
 
 arcpy.env.workspace = str(workspace)
 
-# combine the point inputs together
-arcpy.Merge_management([in_points,in_restrict_chn_pnt], "all_points")
-# combine the polygon inputs together
-arcpy.Merge_management([in_polygons, in_restrict_chn_poly, in_restrict_shn_poly, in_restrict_cdda_poly], "all_polygons")
+# combine the point inputs together depending on whether restricted data is included or not
+if restricted == True:
+    all_points = arcpy.Merge_management([in_points,in_restrict_chn_pnt], 'all_points')
+    all_polygons = arcpy.Merge_management([in_polygons, in_restrict_chn_poly, in_restrict_shn_poly, in_restrict_cdda_poly], 'all_polygons')
+else:
+    all_points = in_points
+    all_polygons = in_polygons
 
 # repair geometries for newly merged files
-arcpy.RepairGeometry_management("all_points","DELETE_NULL","OGC")
-arcpy.RepairGeometry_management("all_polygons","DELETE_NULL","OGC")
+arcpy.RepairGeometry_management(all_points,"DELETE_NULL","OGC")
+arcpy.RepairGeometry_management(all_polygons,"DELETE_NULL","OGC")
 
 # remove the sites that have an uncertain status or have potentially very innacruate areas
-arcpy.Select_analysis("all_points", "all_wdpa_points_select","STATUS in ('Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
-arcpy.Select_analysis("all_polygons", "all_wdpa_polygons_select","STATUS in ('Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
+arcpy.Select_analysis(all_points, r"in_memory\all_wdpa_points_select","STATUS in ('Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
+arcpy.Select_analysis(all_polygons, r"in_memory\all_wdpa_polygons_select","STATUS in ('Adopted', 'Designated', 'Inscribed') AND NOT DESIG_ENG = 'UNESCO-MAB Biosphere Reserve'")
 
 # convert the point selection into a polygon by buffering by the REP_AREA
-arcpy.AddField_management("all_wdpa_points_select","radius","DOUBLE")
-arcpy.CalculateField_management("all_wdpa_points_select","radius","math.sqrt(!REP_AREA!/math.pi )*1000","PYTHON_9.3")
-arcpy.PairwiseBuffer_analysis("all_wdpa_points_select","all_wdpa_points_select_buff","radius","","","GEODESIC","")
+arcpy.AddField_management(r"in_memory\all_wdpa_points_select","radius","DOUBLE")
+arcpy.CalculateField_management(r"in_memory\all_wdpa_points_select","radius","math.sqrt(!REP_AREA!/math.pi )*1000","PYTHON_9.3")
+arcpy.PairwiseBuffer_analysis(r"in_memory\all_wdpa_points_select",r"in_memory\all_wdpa_points_select_buff","radius","","","GEODESIC","")
 
 # combine the poly selection with the buffered point selection
 # the output (hereafter 'polybuffpnt') represents the starting point for the monthly release - it is all the sites we include in the analysis in one file
 ## IF you want to do count analyses then do it on *this* file
-arcpy.Merge_management(["all_wdpa_points_select_buff","all_wdpa_polygons_select"],"all_wdpa_polybuffpnt")
+arcpy.Merge_management([r"in_memory\all_wdpa_points_select_buff",r"in_memory\all_wdpa_points_select"],"all_wdpa_polybuffpnt")
 
 # repair the polybuffpnt
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt","DELETE_NULL","OGC")
+
+# randomly reassign a STATUS_YR value to those sites that dont have one
+field = ['STATUS_YR']
+with arcpy.da.UpdateCursor('all_wdpa_polybuffpnt',field) as cursor:
+    for row in cursor:
+        if row[0] == 0:
+            row[0] = random.randint(1819,2020)
+            cursor.updateRow(row)
 
 # rename the ISO3 field in the WDPA to clarify it is the WDPA ISO3 and not a basemap ISO3
 arcpy.AlterField_management("all_wdpa_polybuffpnt","ISO3","WDPA_ISO3")
@@ -186,48 +214,45 @@ arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union","xyco_count",[["XYco","CO
 # join (add) the XYco field from the summary table to the output of the union
 arcpy.JoinField_management("all_wdpa_polybuffpnt_union","XYco","xyco_count","XYco","COUNT_XYco")
 
-# clean up some redundant fields
-arcpy.DeleteField_management("all_wdpa_polybuffpnt_union",["BUFF_DIST","CENTROID_X","CENTROID_Y","FID_all_wdpa_polybuffpnt","OBJECTID","OBJECTID_1","ORIG_FID","radius"])
-
 # select out all of the segments which only have 1 XYco, i.e. the novel geometries with no overlaps within the WDPA
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_unique","COUNT_XYco = 1")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union",r"in_memory\all_wdpa_polybuffpnt_union_unique","COUNT_XYco = 1")
 
 # select out all of the segments which have >1 XYco, i.e. geometries which overlap within the WDPA
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_duplicates","COUNT_XYco > 1")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union",r"in_memory\all_wdpa_polybuffpnt_union_duplicates","COUNT_XYco > 1")
 
 # run a summary report listing the lowest STATUS_YR for each duplicate area by XYco
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_earliest_sum",[["STATUS_YR","MIN"]],"XYco")
+arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_duplicates",r"in_memory\all_wdpa_polybuffpnt_union_duplicates_earliest_sum",[["STATUS_YR","MIN"]],"XYco")
 
 # make a copy of the duplicates
-arcpy.Copy_management("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_flat")
+arcpy.Copy_management(r"in_memory\all_wdpa_polybuffpnt_union_duplicates",r"in_memory\all_wdpa_polybuffpnt_union_duplicates_flat")
 
 # delete all identical XYcos from the copied duplicates, we dont care about the values, just the geometreis and making it flat
-arcpy.DeleteIdentical_management("all_wdpa_polybuffpnt_union_duplicates_flat","XYco")
+arcpy.DeleteIdentical_management(r"in_memory\all_wdpa_polybuffpnt_union_duplicates_flat","XYco")
 
 # join the summary report to the copied duplicates
-arcpy.JoinField_management("all_wdpa_polybuffpnt_union_duplicates_flat","XYco","all_wdpa_polybuffpnt_union_duplicates_earliest_sum","XYco","MIN_status_yr")
+arcpy.JoinField_management(r"in_memory\all_wdpa_polybuffpnt_union_duplicates_flat","XYco",r"in_memory\all_wdpa_polybuffpnt_union_duplicates_earliest_sum","XYco","MIN_status_yr")
 
 # recalculate status_yr so that each XYco has the earliest status_yr that geometry had
-arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_duplicates_flat","STATUS_YR","!MIN_status_yr!")
+arcpy.CalculateField_management(r"in_memory\all_wdpa_polybuffpnt_union_duplicates_flat","STATUS_YR","!MIN_status_yr!")
 
 # remove the field
-arcpy.DeleteField_management("all_wdpa_polybuffpnt_union_duplicates_flat","MIN_status_yr")
+arcpy.DeleteField_management(r"in_memory\all_wdpa_polybuffpnt_union_duplicates_flat","MIN_status_yr")
 
 # merge these site back into the unique geometries - creating a flat layer which has the whole WDPA schema populated still.
 ## If you want to do count analyses do it on the polybuffpnt, if you want to do spatial analyses, do it with this file.
-arcpy.Merge_management(["all_wdpa_polybuffpnt_union_duplicates_flat","all_wdpa_polybuffpnt_union_unique"],"all_wdpa_polybuffpnt_union_flat")
+arcpy.Merge_management([r"in_memory\all_wdpa_polybuffpnt_union_duplicates_flat",r"in_memory\all_wdpa_polybuffpnt_union_unique"],r"in_memory\all_wdpa_polybuffpnt_union_flat")
 
 # repair the recombined layer
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat","DELETE_NULL","OGC")
+arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_union_flat","DELETE_NULL","OGC")
 
 # intersect it with the basemap
-arcpy.PairwiseIntersect_analysis(["all_wdpa_polybuffpnt_union_flat",in_basemap_spat],"all_wdpa_polybuffpnt_union_flat_intersect")
+arcpy.PairwiseIntersect_analysis([r"in_memory\all_wdpa_polybuffpnt_union_flat",in_basemap_spat],r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect")
 
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect","DELETE_NULL","OGC")
+arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect","DELETE_NULL","OGC")
 
 # project it into mollweide, an equal area projection
-arcpy.Project_management("all_wdpa_polybuffpnt_union_flat_intersect","all_wdpa_polybuffpnt_union_flat_intersect_project",in_mollweideprj)
+arcpy.Project_management(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect","all_wdpa_polybuffpnt_union_flat_intersect_project",in_mollweideprj)
 
 # repair it
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect_project","DELETE_NULL","OGC")
@@ -241,28 +266,28 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersec
 # GLOBAL SUMMARY REPORTS
 
 # select only sites outside of the ABNJ (they get treated separately)
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project", "all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project", r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
 
 # change the 'type' field in the non_abnj selection so that ABNJ is always changed to 'EEZ' (nationally designated sites go over into the geographic ABNJ)
-arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","type","!type!.replace('ABNJ','EEZ')", 'PYTHON3')
+arcpy.CalculateField_management(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","type","!type!.replace('ABNJ','EEZ')", 'PYTHON3')
 
 # run some summary stats on the Land + EEZ selection for the current year (current) and broken down per year (current)
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","global_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
+arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","global_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
+arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
 
 # select out just the rows with an ISO3 of 'ABNJ'
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project","ABNJ_sites","WDPA_ISO3 = 'ABNJ'")
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project",r"in_memory\ABNJ_sites","WDPA_ISO3 = 'ABNJ'")
 
 # run some global summary stats on the ABNJ selection for the current year (current) and broken down per year (temporal)
-arcpy.Statistics_analysis("ABNJ_sites","abnj_global_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
-arcpy.Statistics_analysis("ABNJ_sites","abnj_global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
+arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
+arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
 
 # pivot the global current, global temporal summary table and the abnj temporal summary tables
 arcpy.PivotTable_management("global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO","global_summary_statistics_temporal_pivot")
-arcpy.PivotTable_management("abnj_global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO","abnj_summary_statistics_temporal_pivot")
+arcpy.PivotTable_management(r"in_memory\abnj_global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO","abnj_summary_statistics_temporal_pivot")
 
 # add the abnj tables into the global summary tables
-arcpy.Append_management("abnj_global_summary_statistics_current","global_summary_statistics_current","NO_TEST")
+arcpy.Append_management(r"in_memory\abnj_global_summary_statistics_current","global_summary_statistics_current","NO_TEST")
 arcpy.JoinField_management("global_summary_statistics_temporal_pivot","STATUS_YR","abnj_summary_statistics_temporal_pivot","STATUS_YR", 'ABNJ')
 
 # update the fields so that they show '0' as opposed to blank cells
@@ -303,20 +328,20 @@ arcpy.CalculateField_management("global_summary_statistics_temporal_pivot","ABNJ
 # REGIONAL SUMMARY REPORTS
 
 # run some summary stats on the regional for the current year (current) and broken down per year (temporal)
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","regional_summary_statistics_current",[["AREA_GEO","SUM"]],["sdg_region","type"])
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR","sdg_region"])
+arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",r"in_memory\regional_summary_statistics_current",[["AREA_GEO","SUM"]],["sdg_region","type"])
+arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", r"in_memory\regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR","sdg_region"])
 
 # run some global summary stats on the ABNJ selection for the current year (current) and broken down per year (temporal)
-arcpy.Statistics_analysis("ABNJ_sites","abnj_regional_summary_statistics_current",[["AREA_GEO","SUM"]],["type","sdg_region"])
-arcpy.Statistics_analysis("ABNJ_sites","abnj_regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "sdg_region", "STATUS_YR"])
+arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_current",[["AREA_GEO","SUM"]],["type","sdg_region"])
+arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "sdg_region", "STATUS_YR"])
 
 # add in the abnj area to the regional summary tables
-arcpy.Append_management("abnj_regional_summary_statistics_current","regional_summary_statistics_current","NO_TEST")
-arcpy.Append_management("abnj_regional_summary_statistics_temporal","regional_summary_statistics_temporal","NO_TEST")
+arcpy.Append_management(r"in_memory\abnj_regional_summary_statistics_current",r"in_memory\regional_summary_statistics_current","NO_TEST")
+arcpy.Append_management(r"in_memory\abnj_regional_summary_statistics_temporal",r"in_memory\regional_summary_statistics_temporal","NO_TEST")
 
 # pivot the regional temporal summary table and the ABNJ table
-arcpy.PivotTable_management("regional_summary_statistics_current",["sdg_region"],"type","SUM_AREA_GEO","regional_summary_statistics_current_pivot")
-arcpy.PivotTable_management("regional_summary_statistics_temporal",["STATUS_YR","sdg_region"],"type","SUM_AREA_GEO","regional_summary_statistics_temporal_pivot")
+arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_current",["sdg_region"],"type","SUM_AREA_GEO","regional_summary_statistics_current_pivot")
+arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_temporal",["STATUS_YR","sdg_region"],"type","SUM_AREA_GEO","regional_summary_statistics_temporal_pivot")
 
 # update the fields so that they show '0' as opposed to blank cells
 arcpy.CalculateField_management("regional_summary_statistics_current_pivot","EEZ","updateValue(!EEZ!)","PYTHON_9.3", in_codeblock1)
@@ -340,6 +365,16 @@ arcpy.Statistics_analysis("all_wdpa_polybuffpnt","count_ISO3",[["WDPAID","COUNT"
 arcpy.Statistics_analysis("all_wdpa_polybuffpnt","count_STATUSYR",[["WDPAID","COUNT"]],"STATUS_YR")
 arcpy.Statistics_analysis("all_wdpa_polybuffpnt","count_OWNTYPE",[["WDPAID","COUNT"]],"OWN_TYPE")
 
+# calculate the no-take stats
+arcpy.Select_analysis("all_wdpa_polybuffpnt", r"in_memory\notake_all","NO_TAKE = 'All'")
+arcpy.Dissolve_management(r"in_memory\notake_all",r"in_memory\notake_all_diss")
+arcpy.Project_management(r"in_memory\notake_all_diss",r"in_memory\notakeall_diss_project",in_mollweideprj)
+arcpy.AddGeometryAttributes_management(r"in_memory\notakeall_diss_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
+arcpy.Statistics_analysis(r"in_memory\notakeall_diss_project","sum_NOTAKEall",[["AREA_GEO","SUM"]])
+
+arcpy.Select_analysis("all_wdpa_polybuffpnt", r"in_memory\notake_part","NO_TAKE = 'Part'")
+arcpy.Statistics_analysis(r"in_memory\notake_part","sum_NOTAKEpart",[["NO_TK_AREA","SUM"]])
+
 elapsed_hours = (time.clock() - start)/3600
 print(("Stage 1 took " + str(elapsed_hours) + " hours"))
 
@@ -355,15 +390,15 @@ arcpy.JoinField_management("all_wdpa_polybuffpnt","WDPAID",in_pame_sites,"wdpaid
 arcpy.CalculateField_management("all_wdpa_polybuffpnt","ass_id","updateValue(!ass_id!)","PYTHON_9.3", in_codeblock1)
 
 # select transboundary sites and non transboundary sites
-arcpy.Select_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_nontransboundary","WDPA_ISO3 NOT LIKE '%;%'")
-arcpy.Select_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_transboundary","WDPA_ISO3 LIKE '%;%'")
+arcpy.Select_analysis("all_wdpa_polybuffpnt",r"in_memory\all_wdpa_polybuffpnt_nontransboundary","WDPA_ISO3 NOT LIKE '%;%'")
+arcpy.Select_analysis("all_wdpa_polybuffpnt",r"in_memory\all_wdpa_polybuffpnt_transboundary","WDPA_ISO3 LIKE '%;%'")
 
 # repair them
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary","DELETE_NULL","OGC")
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary","DELETE_NULL","OGC")
+arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary","DELETE_NULL","OGC")
+arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_transboundary","DELETE_NULL","OGC")
 
 # erase the transboundary sites from the nontransboundary sites
-arcpy.Erase_analysis("all_wdpa_polybuffpnt_transboundary","all_wdpa_polybuffpnt_nontransboundary","all_wdpa_polybuffpnt_transboundary_novelarea")
+arcpy.Erase_analysis(r"in_memory\all_wdpa_polybuffpnt_transboundary",r"in_memory\all_wdpa_polybuffpnt_nontransboundary","all_wdpa_polybuffpnt_transboundary_novelarea")
 
 # repair the output of the erase
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_novelarea","DELETE_NULL","OGC")
@@ -378,7 +413,7 @@ arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_novelarea_in
 arcpy.CalculateField_management("all_wdpa_polybuffpnt_transboundary_novelarea_intersect","WDPA_ISO3","!GEO_ISO3!","PYTHON_9.3")
 
 # rename the nontransboundary sites
-arcpy.Rename_management("all_wdpa_polybuffpnt_nontransboundary","all_wdpa_polybuffpnt_national")
+arcpy.Rename_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary","all_wdpa_polybuffpnt_national")
 
 # append back the erased and intersected transboundary sites back into the nontransboundary sites
 arcpy.Append_management("all_wdpa_polybuffpnt_national","all_wdpa_polybuffpnt_transboundary_novelarea_intersect","NO_TEST")
@@ -387,10 +422,10 @@ arcpy.Append_management("all_wdpa_polybuffpnt_national","all_wdpa_polybuffpnt_tr
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_national","DELETE_NULL","OGC")
 
 # split by attribute (wdpa_iso3) to create an individual fc for each iso3
-arcpy.SplitByAttributes_analysis("all_wdpa_polybuffpnt_national",out_sbafolder, "WDPA_ISO3")
+arcpy.SplitByAttributes_analysis("all_wdpa_polybuffpnt_national",sbafolder, "WDPA_ISO3")
 
 # change the location of the workspace to represent the location of the sba output
-arcpy.env.workspace = out_sbafolder
+arcpy.env.workspace = sbafolder
 arcpy.env.overwriteOutput = True
 
 out_sba = arcpy.ListFeatureClasses()
@@ -478,7 +513,7 @@ for fc in out_sba:
 
 
 # we now return back to the original workspace
-arcpy.env.workspace = workspace
+arcpy.env.workspace = str(workspace)
 
 
 # NATIONAL CURRENT REPORTS
@@ -533,7 +568,7 @@ elapsed_minutes = (time.clock() - start)/60
 elapsed_hours = (time.clock() - start)/3600
 
 print ("scripts finished - all good")
-print ("Outputs are here: " + workspace)
+print ("Outputs are here: " + str(workspace))
 print ("Total running time: " + str(elapsed_minutes) + " minutes (" + str(elapsed_hours) + " hours)")
 
 
