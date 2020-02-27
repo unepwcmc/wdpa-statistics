@@ -5,7 +5,6 @@
 # Last updated: 21/02/2020
 # ArcGIS Version: Pro(2.1+)
 # Python: 3.1+
-# Adding a line here to test github desktop
 
 #--------------------------------------------------------------------------------------------------------------------------
 # Preamble: Define the script workspaces
