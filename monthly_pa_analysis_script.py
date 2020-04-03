@@ -41,7 +41,7 @@ scratchworkspace = arcpy.CreateFileGDB_management(outputfolder,"PACT_script_scra
 # Stage 0: Specify file paths and define access level
 print ("Stage 0: Define the inputs and access level")
 
-print ("Stage 0.1: Access Level")
+print ("Stage 0.1: Access level")
 # do you have access to the restricted protected area data? If you do not then put False
 restricted = True
 if restricted == True:
@@ -52,21 +52,21 @@ else:
 # if you have access to the restricted data then copy the file paths here:
 if restricted == True:
     # define location of restricted CHN points
-    in_restrict_chn_pnt = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model_pnt"
+    in_restrict_chn_pnt = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model_pnt"
     # define location of restricted CHN polygons
-    in_restrict_chn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model"
+    in_restrict_chn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model"
     # define location of restricted SHN polygons
-    in_restrict_shn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
+    in_restrict_shn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
     # define location of restricted EST polygons
-    in_restrict_cdda_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
+    in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
 
 print ("Stage 0.2: PAME sites")
 # define the list of protected areas that have pame assessments
-in_pame_sites = r"C:\Users\EdwardL\Documents\ArcGIS\Restricted_Data.gdb\PAME_Sites"
+in_pame_sites = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\PAME_Sites"
 
 print ("Stage 0.3: OECM sites")
 # define the input for the oecm data
-in_oecmpoly = r"[file_path_here]"
+in_oecmpoly = r"I:\_Monthly_Coverage_Stats_\0_Tools\4_OECMs\WDOECM_Apr2020_Public\WDOECM_Apr2020_Public.gdb\WDOECM_poly_Apr2020"
 
 print ("Stage 0.4 PA sites")
 ### THIS SECTION WORKS BUT IS MASKED OUT WHILST WE ARE RUNNING TESTS ####
@@ -99,8 +99,8 @@ print ("Stage 0.4 PA sites")
 ##########################################################################
 
 # define the protected area point and polygon inputs [doing this manually or now]
-in_points = r"[file_path_here]"
-in_polygons = r"file_path_here"
+in_points = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\PER_model_testing.gdb\TEST_PER_pnt"
+in_polygons = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\BLM_model_testing.gdb\BLM_model_testing_subset"
 
 print ("Stage 0.5: Projection files")
 
