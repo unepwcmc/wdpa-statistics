@@ -268,6 +268,13 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersec
 # for the explanation and underlying rationale for these decisions please see accompanying metadata.
 
 # GLOBAL SUMMARY REPORTS
+
+# PLACEHOLDER FOR OECM STATS
+# SUMMARY TABLE SHOWING HOW MUCH (KM2) OF THE LAND AND SEA ARE COVERED BY OECMs
+# SUMMARY TABLE SHOWING HOW MUCH (%) OF THE LAND AND SEA AREA COVERED BY OECMS
+# HINT - LOOK BELOW AND YOU CAN REJIG EXISTING CODE
+
+
 # select only sites outside of the ABNJ (they get treated separately)
 arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project", r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
 
@@ -587,6 +594,9 @@ elapsed_hours = (time.clock() - start)/3600
 print ("scripts finished - all good")
 print ("Outputs are here: " + str(workspace))
 print ("Total running time: " + str(elapsed_minutes) + " minutes (" + str(elapsed_hours) + " hours)")
+
+arcpy.Delete_management(scratchworkspace)
+
 
 
 ##### BELOW HERE IS A WORK IN PROGRESS AND HASHTAGGED OUT FOR NOW
