@@ -2,15 +2,14 @@
 # Purpose: A script based on an Esri model to calculate PA coverage globally, regionally and nationally as well as calculating national and PAME statistics.
 # Author: Ed Lewis (edward.lewis@unep-wcmc.org)
 # Created: 01/07/2019
-# Last updated: 21/02/2020
+# Last updated: 02/04/2020
 # ArcGIS Version: Pro(2.1+)
 # Python: 3.1+
-# Adding this line of code as a test
 
 #--------------------------------------------------------------------------------------------------------------------------
 # Preamble: Define the script workspaces
 
-# import arcpy module
+# import arcpy modules
 import arcpy
 import os
 import time
@@ -21,6 +20,7 @@ from arcpy import env
 
 #start the stopwatch
 start = time.clock()
+
 # enable the overwriting of outputs
 arcpy.env.overwriteOutput = True
 
@@ -36,61 +36,105 @@ workspace = arcpy.CreateFileGDB_management(outputfolder,"PACT_script_outputs")
 
 # define the scratch workspace for outputs we dont want to keep, this will be deleted at the end of the script
 scratchworkspace = arcpy.CreateFileGDB_management(outputfolder,"PACT_script_scratch_workspace")
-
 #--------------------------------------------------------------------------------------------------------------------------
 
-# Stage 0.1: Specify file paths for files not automated into script if you want to run
+# Stage 0: Specify file paths and define access level
+print ("Stage 0: Define the inputs and access level")
 
-# Do you have access to the restricted protected area data? If you do not then put False
+print ("Stage 0.1: Access Level")
+# do you have access to the restricted protected area data? If you do not then put False
 restricted = True
+if restricted == True:
+    print("Access level = WCMC")
+else:
+    print("Access level = public")
 
 # if you have access to the restricted data then copy the file paths here:
 if restricted == True:
-    # restricted CHN points
+    # define location of restricted CHN points
     in_restrict_chn_pnt = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model_pnt"
-    # restricted CHN polygons
+    # define location of restricted CHN polygons
     in_restrict_chn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model"
-    # restricted SHN polygons
+    # define location of restricted SHN polygons
     in_restrict_shn_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
-    # restricted EST polygons
+    # define location of restricted EST polygons
     in_restrict_cdda_poly = r"E:\_Useful_Datasets_\Model_test_country\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
 
-## MAKE THIS AN IF FUNCTION TOO? CAN YOU DO IT WITH ALL THE SUMMARY TABLES
-# do you want to collect PAME statistics? If you do not then put False
+print ("Stage 0.2: PAME sites")
+# define the list of protected areas that have pame assessments
 in_pame_sites = r"C:\Users\EdwardL\Documents\ArcGIS\Restricted_Data.gdb\PAME_Sites"
 
-#------------------------------------------------------------------------------------------------------------------------
-print ("Stage 0: Download the inputs")
+print ("Stage 0.3: OECM sites")
+# define the input for the oecm data
+in_oecmpoly = r"[file_path_here]"
 
+print ("Stage 0.4 PA sites")
+### THIS SECTION WORKS BUT IS MASKED OUT WHILST WE ARE RUNNING TESTS ####
 # downloads the most recent version of the WDPA from Protected Planet and saves it in the root directory
-print ('Downloading the latest WDPA from Protected Planet....')
+#print ('Downloading the latest WDPA from Protected Planet....')
 
-url = r'http://wcmc.io/wdpa_current_release'
-filename = str(inputfolder) + r"\\WDPA_Latest.zip"
-targetfile = urllib.request.urlretrieve(url, filename)
+#url = r'http://wcmc.io/wdpa_current_release'
+#filename = str(inputfolder) + r"\\WDPA_Latest.zip"
+#targetfile = urllib.request.urlretrieve(url, filename)
 
-print ('Unzipping the WDPA...')
+#print ('Unzipping the WDPA...')
 # unzips the folder to enable the file geodatabase to be queried, also in the root directory
-handle = zipfile.ZipFile(filename)
-handle.extractall(str(inputfolder))
-handle.close
+#handle = zipfile.ZipFile(filename)
+#handle.extractall(str(inputfolder))
+#handle.close
 
-env.workspace = str(inputfolder)
+#env.workspace = str(inputfolder)
 
 # list the gdbs in the inputfolder
-gdbs = arcpy.ListWorkspaces("*", "FileGDB")
+#gdbs = arcpy.ListWorkspaces("*", "FileGDB")
 
 # for the gdb in the inputfolder, list the feature classes that are in the gdb
-for gdb in gdbs:
-    env.workspace = gdb
-    fcs = arcpy.ListFeatureClasses()
+#for gdb in gdbs:
+    #env.workspace = gdb
+    #fcs = arcpy.ListFeatureClasses()
 
 # concatenate the file paths to specify the exact inputs for the script
-in_points = gdb + "\\" + fcs[0]
-in_polygons = gdb + "\\" + fcs[1]
+#in_points = gdb + "\\" + fcs[0]
+#in_polygons = gdb + "\\" + fcs[1]
+##########################################################################
 
-# download teh supporting files from the github repo
-print('Downloading the supporting files from Eds GitHub repo....')
+# define the protected area point and polygon inputs [doing this manually or now]
+in_points = r"[file_path_here]"
+in_polygons = r"file_path_here"
+
+print ("Stage 0.5: Projection files")
+
+# define the projection files used to define outputs/workspaces
+in_mollweideprj = str(inputfolder) + "\\supporting_files\moll_projection.prj"
+
+
+print ("Stage 0.6: Basemaps")
+###### -  SCRIPTS TO AUTOMATE DOWNLOADING THE BASEMAPS - IGNORE FOR NOW####
+#print('Downloading the basemaps from XXXX')
+
+# download the basemaps from [INSERT PLACE]
+#url = r'ENTER THE BASEMAP FILE PATH HERE'
+#filename = str(inputfolder) + r"\\basemaps.zip"
+#targetfile = urllib.request.urlretrieve(url, filename)
+
+#print ('Unzipping the basemaps...')
+# unzips the folder to enable the file geodatabase to be queried, also in the root directory
+#handle = zipfile.ZipFile(filename)
+#handle.extractall(str(inputfolder))
+#handle.close
+###################################################################################
+
+# define spatial basemap input - country boundaries etc
+in_basemap_spat = str(inputfolder) + "\\basemaps\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models.shp"
+
+# define tabular basemap input - just the attribute table of in_basemap_spat
+in_basemap_tab = str(inputfolder) + "\\basemaps\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models_tabular.dbf"
+
+
+print ("Stage 0.7: Supporting information from Github Repo")
+
+# download the supporting files from the github repo
+print('Downloading the supporting files from [Eds] GitHub repo....')
 
 url = r'http://github.com/EdwardMLewis/wdpa-statistics/archive/master.zip'
 filename = str(inputfolder) + r"\\supporting_files.zip"
@@ -101,49 +145,6 @@ print ('Unzipping the supporting files...')
 handle = zipfile.ZipFile(filename)
 handle.extractall(str(inputfolder))
 handle.close
-
-# rename the github repo folder to something mroe sensible
-# scripts to do that.....
-
-# define the projection files used to define outputs/workspaces
-in_mollweideprj = str(inputfolder) + "\\supporting_files\moll_projection.prj"
-
-print('Downloading the basemaps from XXXX')
-
-url = r'ENTER THE BASEMAP FILE PATH HERE'
-filename = str(inputfolder) + r"\\basemaps.zip"
-targetfile = urllib.request.urlretrieve(url, filename)
-
-print ('Unzipping the supporting files...')
-# unzips the folder to enable the file geodatabase to be queried, also in the root directory
-handle = zipfile.ZipFile(filename)
-handle.extractall(str(inputfolder))
-handle.close
-
-
-
-
-
-
-# spatial basemap - country boundaries etc
-in_basemap_spat = str(inputfolder) + "\\basemaps\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models.shp"
-
-# tabular basemap - country boundaries info as table
-in_basemap_tab = str(inputfolder) + "\\basemaps\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models_tabular.dbf"
-
-
-# create the summary tables for appending in individual natioanl summary statistics
-oncs = arcpy.CreateTable_management(workspace,"out_national_current_schema")
-arcpy.AddFields_management(oncs,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
-
-onts = arcpy.CreateTable_management(workspace,"out_national_current_schema")
-arcpy.AddFields_management(onts,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
-
-oncsp = arcpy.CreateTable_management(workspace,"out_national_current_schema")
-arcpy.AddFields_management(oncsp,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
-
-ontsp = arcpy.CreateTable_management(workspace,"out_national_current_schema")
-arcpy.AddFields_management(ontsp,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
 
 #--------------------------------------------------------------------------------------------------------------------------
 
@@ -265,7 +266,6 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersec
 # for the explanation and underlying rationale for these decisions please see accompanying metadata.
 
 # GLOBAL SUMMARY REPORTS
-
 # select only sites outside of the ABNJ (they get treated separately)
 arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project", r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
 
@@ -518,6 +518,19 @@ arcpy.env.workspace = str(workspace)
 
 
 # NATIONAL CURRENT REPORTS
+# create summary tables for national status
+# create the summary tables for appending in individual natioanl summary statistics
+oncs = arcpy.CreateTable_management(workspace,"out_national_current_schema")
+arcpy.AddFields_management(oncs,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
+
+onts = arcpy.CreateTable_management(workspace,"out_national_current_schema")
+arcpy.AddFields_management(onts,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
+
+oncsp = arcpy.CreateTable_management(workspace,"out_national_current_schema")
+arcpy.AddFields_management(oncsp,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
+
+ontsp = arcpy.CreateTable_management(workspace,"out_national_current_schema")
+arcpy.AddFields_management(ontsp,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
 
 # pivot the current national summary tables
 arcpy.PivotTable_management(out_national_current_schema,"WDPA_ISO3","type","SUM_AREA_GEO","national_summary_statistics_current_pivot")
