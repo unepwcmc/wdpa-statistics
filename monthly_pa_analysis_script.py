@@ -5,6 +5,7 @@
 # Last updated: 02/04/2020
 # ArcGIS Version: Pro(2.1+)
 # Python: 3.1+
+#testing attribution function
 
 #--------------------------------------------------------------------------------------------------------------------------
 # Preamble: Define the script workspaces
@@ -52,13 +53,13 @@ else:
 # if you have access to the restricted data then copy the file paths here:
 if restricted == True:
     # define location of restricted CHN points
-    in_restrict_chn_pnt = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model_pnt"
+    in_restrict_chn_pnt = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\CHN_restricted_Feb2018_NR_Point_Regions"
     # define location of restricted CHN polygons
-    in_restrict_chn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model"
+    in_restrict_chn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\CHN_restricted_Feb2018_NNR_Poly_Regions"
     # define location of restricted SHN polygons
     in_restrict_shn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
     # define location of restricted EST polygons
-    in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
+    in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\SHN_restricted_July2018Poly_Regions"
 
 print ("Stage 0.2: PAME sites")
 # define the list of protected areas that have pame assessments
@@ -99,8 +100,8 @@ print ("Stage 0.4 PA sites")
 ##########################################################################
 
 # define the protected area point and polygon inputs [doing this manually or now]
-in_points = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\tiny_subset.gdb\CHL_Test_Pnt"
-in_polygons = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\tiny_subset.gdb\BLM_model_testing_subset"
+in_points = r"C:\Users\EdwardL\Downloads\WDPA_Apr2020_Public\WDPA_Apr2020_Public.gdb\WDPA_point_Apr2020"
+in_polygons = r"C:\Users\EdwardL\Downloads\WDPA_Apr2020_Public\WDPA_Apr2020_Public.gdb\WDPA_poly_Apr2020"
 
 print ("Stage 0.5: Basemaps")
 ###### -  SCRIPTS TO AUTOMATE DOWNLOADING THE BASEMAPS - IGNORE FOR NOW####
