@@ -268,6 +268,23 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersec
 # now we get into the creation of summary statistic tables
 # for the explanation and underlying rationale for these decisions please see accompanying metadata.
 
+#########################################################################################################################################
+# intersect OECMs it with the basemap
+#arcpy.PairwiseIntersect_analysis([in_oecmpoly,in_basemap_spat],r"in_memory\in_oecmpoly_intersect")
+
+# repair it
+#arcpy.RepairGeometry_management(r"in_memory\in_oecmpoly_intersect","DELETE_NULL","OGC")
+
+# project it into mollweide, an equal area projection
+#arcpy.Project_management(r"in_memory\in_oecmpoly_intersect","in_oecmpoly_intersect_project",in_mollweideprj)
+
+# repair it
+#arcpy.RepairGeometry_management("in_oecmpoly_intersect_project","DELETE_NULL","OGC")
+
+# add and calculate a new area field
+#arcpy.AddGeometryAttributes_management("in_oecmpoly_intersect_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
+#########################################################################################################################################
+
 # GLOBAL SUMMARY REPORTS
 
 # PLACEHOLDER FOR OECM STATS
