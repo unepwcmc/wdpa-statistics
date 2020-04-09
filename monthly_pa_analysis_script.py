@@ -59,6 +59,8 @@ if restricted == True:
     in_restrict_shn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
     # define location of restricted EST polygons
     in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
+    # restricted CAN polygons
+    #in_restrict_can_poly = r"E:\WDPA\0_Useful_material\monthly_pa_analysis_testing_dataset\WDPA_subset_model_testing.gdb\CAN_restricted_50_testing_for_model"
 
 print ("Stage 0.2: PAME sites")
 # define the list of protected areas that have pame assessments
