@@ -87,17 +87,15 @@ print ("Stage 0.4 PA sites")
 
 #env.workspace = str(inputfolder)
 
-# list the gdbs in the inputfolder
-#gdbs = arcpy.ListWorkspaces("*", "FileGDB")
+# for the inputfolder, list the feature classes that are polygons and join the file path componentes to specify the exact polygon input for the script
+#for dirpath, dirnames, filenames in arcpy.da.Walk(inputfolder, datatype="FeatureClass", type="Polygon"):
+  for filename in filenames:
+    in_polygons = os.path.join(dirpath,filename)
 
-# for the gdb in the inputfolder, list the feature classes that are in the gdb
-#for gdb in gdbs:
-    #env.workspace = gdb
-    #fcs = arcpy.ListFeatureClasses()
-
-# concatenate the file paths to specify the exact inputs for the script
-#in_points = gdb + "\\" + fcs[0]
-#in_polygons = gdb + "\\" + fcs[1]
+# for the inputfolder, list the feature classes that are points and join the file path componentes to specify the exact point input for the script
+for dirpath, dirnames, filenames in arcpy.da.Walk(inputfolder, datatype="FeatureClass", type="Multipoint"):
+  for filename in filenames:
+    in_points = os.path.join(dirpath,filename)
 ##########################################################################
 
 # define the protected area point and polygon inputs [doing this manually or now]
