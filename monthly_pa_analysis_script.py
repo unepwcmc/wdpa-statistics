@@ -59,6 +59,8 @@ if restricted == True:
     in_restrict_shn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
     # define location of restricted EST polygons
     in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
+    # restricted CAN polygons
+    #in_restrict_can_poly = r"E:\WDPA\0_Useful_material\monthly_pa_analysis_testing_dataset\WDPA_subset_model_testing.gdb\CAN_restricted_50_testing_for_model"
 
 print ("Stage 0.2: PAME sites")
 # define the list of protected areas that have pame assessments
@@ -85,17 +87,15 @@ print ("Stage 0.4 PA sites")
 
 #env.workspace = str(inputfolder)
 
-# list the gdbs in the inputfolder
-#gdbs = arcpy.ListWorkspaces("*", "FileGDB")
+# for the inputfolder, list the feature classes that are polygons and join the file path componentes to specify the exact polygon input for the script
+#for dirpath, dirnames, filenames in arcpy.da.Walk(inputfolder, datatype="FeatureClass", type="Polygon"):
+  for filename in filenames:
+    in_polygons = os.path.join(dirpath,filename)
 
-# for the gdb in the inputfolder, list the feature classes that are in the gdb
-#for gdb in gdbs:
-    #env.workspace = gdb
-    #fcs = arcpy.ListFeatureClasses()
-
-# concatenate the file paths to specify the exact inputs for the script
-#in_points = gdb + "\\" + fcs[0]
-#in_polygons = gdb + "\\" + fcs[1]
+# for the inputfolder, list the feature classes that are points and join the file path componentes to specify the exact point input for the script
+for dirpath, dirnames, filenames in arcpy.da.Walk(inputfolder, datatype="FeatureClass", type="Multipoint"):
+  for filename in filenames:
+    in_points = os.path.join(dirpath,filename)
 ##########################################################################
 
 # define the protected area point and polygon inputs [doing this manually or now]
