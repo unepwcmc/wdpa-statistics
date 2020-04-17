@@ -2,10 +2,9 @@
 # Purpose: A script based on an Esri model to calculate PA coverage globally, regionally and nationally as well as calculating national and PAME statistics.
 # Author: Ed Lewis (edward.lewis@unep-wcmc.org)
 # Created: 01/07/2019
-# Last updated: 02/04/2020
+# Last updated: 16/04/2020
 # ArcGIS Version: Pro(2.1+)
 # Python: 3.1+
-#testing attribution function
 
 #--------------------------------------------------------------------------------------------------------------------------
 # Preamble: Define the script workspaces
@@ -53,13 +52,13 @@ else:
 # if you have access to the restricted data then copy the file paths here:
 if restricted == True:
     # define location of restricted CHN points
-    in_restrict_chn_pnt = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\CHN_restricted_Feb2018_NR_Point_Regions"
+    in_restrict_chn_pnt = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model_pnt"
     # define location of restricted CHN polygons
-    in_restrict_chn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\CHN_restricted_Feb2018_NNR_Poly_Regions"
+    in_restrict_chn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\CHN_restricted_testing_for_model"
     # define location of restricted SHN polygons
     in_restrict_shn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
     # define location of restricted EST polygons
-    in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\SHN_restricted_July2018Poly_Regions"
+    in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
 
 print ("Stage 0.2: PAME sites")
 # define the list of protected areas that have pame assessments
@@ -67,7 +66,7 @@ in_pame_sites = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.
 
 print ("Stage 0.3: OECM sites")
 # define the input for the oecm data
-in_oecmpoly = r"I:\_Monthly_Coverage_Stats_\0_Tools\4_OECMs\WDOECM_Apr2020_Public\WDOECM_Apr2020_Public.gdb\WDOECM_poly_Apr2020"
+in_oecmpoly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\oecm_subset.gdb\oecm_subset"
 
 print ("Stage 0.4 PA sites")
 ### THIS SECTION WORKS BUT IS MASKED OUT WHILST WE ARE RUNNING TESTS ####
@@ -100,8 +99,8 @@ print ("Stage 0.4 PA sites")
 ##########################################################################
 
 # define the protected area point and polygon inputs [doing this manually or now]
-in_points = r"C:\Users\EdwardL\Downloads\WDPA_Apr2020_Public\WDPA_Apr2020_Public.gdb\WDPA_point_Apr2020"
-in_polygons = r"C:\Users\EdwardL\Downloads\WDPA_Apr2020_Public\WDPA_Apr2020_Public.gdb\WDPA_poly_Apr2020"
+in_points = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\tiny_subset.gdb\CHL_Test_Pnt"
+in_polygons = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\tiny_subset.gdb\BLM_model_testing_subset"
 
 print ("Stage 0.5: Basemaps")
 ###### -  SCRIPTS TO AUTOMATE DOWNLOADING THE BASEMAPS - IGNORE FOR NOW####
@@ -160,7 +159,7 @@ arcpy.env.workspace = str(workspace)
 # combine the point inputs together depending on whether restricted data is included or not
 if restricted == True:
     all_points = arcpy.Merge_management([in_points,in_restrict_chn_pnt], 'all_points')
-    all_polygons = arcpy.Merge_management([in_polygons, in_restrict_chn_poly, in_restrict_shn_poly, in_restrict_cdda_poly], 'all_polygons')
+    all_polygons = arcpy.Merge_management([in_oecmpoly, in_polygons, in_restrict_chn_poly, in_restrict_shn_poly, in_restrict_cdda_poly], 'all_polygons')
 else:
     all_points = in_points
     all_polygons = in_polygons
@@ -197,6 +196,12 @@ with arcpy.da.UpdateCursor('all_wdpa_polybuffpnt',field) as cursor:
 # rename the ISO3 field in the WDPA to clarify it is the WDPA ISO3 and not a basemap ISO3
 arcpy.AlterField_management("all_wdpa_polybuffpnt","ISO3","WDPA_ISO3")
 
+# add a new field called PA_DEF_INT which is the PA_DEF field but as an integer
+arcpy.AddField_management("all_wdpa_polybuffpnt","PA_DEF_INT","FLOAT")
+
+# populate this new XYco field
+arcpy.CalculateField_management("all_wdpa_polybuffpnt","PA_DEF_INT","!PA_DEF!","PYTHON_9.3")
+
 # split up the polybuffpnt using the Union tool - this splits up the WDPA like a Venn diagram
 arcpy.Union_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_union")
 
@@ -227,6 +232,27 @@ arcpy.Select_analysis("all_wdpa_polybuffpnt_union","all_wdpa_polybuffpnt_union_d
 
 # run a summary report listing the lowest STATUS_YR for each duplicate area by XYco
 arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_duplicates",r"in_memory\all_wdpa_polybuffpnt_union_duplicates_earliest_sum",[["STATUS_YR","MIN"]],"XYco")
+
+# run a summary report listing whether that XYco includes PA (1), OECMs (0) or both (if both the mean will be between 0 and 1)
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_padef",[["PA_DEF_INT","MEAN"]],"XYco")
+
+# update the PA_DEF so that areas that cover both PA and OECM have a PA_DEF_INT of 2
+in_codeblock0 = """
+def updateValue(value):
+  if value >0 and value <1:
+   return '2'
+  else: return value"""
+
+arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_duplicates_padef","MEAN_PA_DEF_INT","updateValue(!MEAN_PA_DEF_INT!)","PYTHON_9.3", in_codeblock0)
+
+# join the pa_def summary report to the copied duplicates
+arcpy.JoinField_management("all_wdpa_polybuffpnt_union_duplicates","XYco","all_wdpa_polybuffpnt_union_duplicates_padef","XYco","MEAN_PA_DEF_INT")
+
+# recalculate status_yr so that each XYco has the earliest status_yr that geometry had
+arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_duplicates","PA_DEF_INT","!MEAN_PA_DEF_INT!")
+
+# remove the field
+arcpy.DeleteField_management("all_wdpa_polybuffpnt_union_duplicates","MEAN_PA_DEF_INT")
 
 # make a copy of the duplicates
 arcpy.Copy_management("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_flat")
