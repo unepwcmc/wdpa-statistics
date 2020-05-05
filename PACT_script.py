@@ -124,7 +124,6 @@ in_basemap_spat = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Basemap.gdb\EE
 # define tabular basemap input - just the attribute table of in_basemap_spat
 in_basemap_tab = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Basemap.gdb\EEZv8_WVS_DIS_V3_ALL_final_v7dis_with_SDG_regions_for_models_tabular"
 
-
 print ("Stage 0.6: Supporting information from Github Repo")
 
 # download the supporting files from the github repo
@@ -143,11 +142,13 @@ handle.close
 # rename the unzipped folder
 arcpy.Rename_management(r"C:\Users\EdwardL\Downloads\PACT_script\PACT_inputs\wdpa-statistics-master",r"C:\Users\EdwardL\Downloads\PACT_script\PACT_inputs\Github_supporting_files")
 
-print ("Stage 0.7: Projection files")
+print ("Stage 0.7: Projection files & CBD national reports")
 
 # define the projection files used to define outputs/workspaces
 in_mollweideprj = str(inputfolder) + "\\Github_supporting_files\moll_projection.prj"
 
+# define the cbd national reports for pa coverage
+in_cbd_nr = str(inputfolder) + "\\Github_supporting_files\cbd_country_nrs.csv"
 #--------------------------------------------------------------------------------------------------------------------------
 
 # Stage 1: Global and Regional analysis
@@ -621,6 +622,21 @@ arcpy.CalculateField_management("national_summary_statistics_current_pivot","pam
 arcpy.CalculateField_management("national_summary_statistics_current_pivot","pame_percentage_pa_land_cover","updateValue(!pame_percentage_pa_land_cover!)","PYTHON_9.3", in_codeblock1)
 arcpy.CalculateField_management("national_summary_statistics_current_pivot","pame_percentage_pa_marine_cover","updateValue(!pame_percentage_pa_marine_cover!)","PYTHON_9.3", in_codeblock1)
 
+# join the national current summary stats to the cbd nr csv from teh github supporting Github_supporting_files
+arcpy.JoinField_management(in_cbd_nr,"ISO3","national_summary_statistics_current_pivot","iso3",["percentage_nr_land_cover","percentage_nr_marine_cover","nr_version","nr_report_url"])
+
+# define the codeblock3
+
+in_codeblock3 = """
+def updateValue(value):
+  if value == None:
+   return 'na'
+  else: return value"""
+
+# update the nr_report_url field to equal na instead of <Null>
+arcpy.CalculateField_management("national_summary_statistics_current_pivot","nr_report_url,"updateValue(!nr_report_url!)","PYTHON_9.3", in_codeblock3)
+
+
 elapsed_minutes = (time.clock() - start)/60
 elapsed_hours = (time.clock() - start)/3600
 
@@ -630,7 +646,7 @@ print ("Total running time: " + str(elapsed_minutes) + " minutes (" + str(elapse
 
 # clean up the worksapce a bit to remove intermediate subfolders
 arcpy.Delete_management(scratchworkspace)
-arcpy.Delete_management(sba_folder)
+arcpy.Delete_management(sbafolder)
 
 # Finish running scripts
 #----------------------------------------------------------------------------------------------------------------------
