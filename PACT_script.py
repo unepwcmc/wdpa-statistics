@@ -300,6 +300,14 @@ out_separate_feature_dataset = arcpy.CreateFeatureDataset_management(workspace,"
 arcpy.env.workspace = str(out_separate_feature_dataset)
 arcpy.env.overwriteOutput = True
 
+# copy whole dataset (i.e. PA_DEF_INT =  0 & PA_DEF_INT =  1 & PA_DEF_INT =  2)  and save it in feature dataset
+arcpy.CopyFeatures_management(input_global, "whole_wdpa_set")
+# select out only PA sites (i.e. PA_DEF_INT =  1 & PA_DEF_INT =  2) and save it in feature dataset
+arcpy.Select_analysis(input_global, "pa_wdpa_set", "PA_DEF_INT IN (1, 2)")
+# select out only OECM sites (i.e. PA_DEF_INT =  0 & PA_DEF_INT =  2) and save it in feature dataset
+arcpy.Select_analysis(input_global, "oecm_wdpa_set", "PA_DEF_INT IN (0, 2)")
+
+
 # select only sites outside of the ABNJ (they get treated separately)
 arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project", r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
 
