@@ -289,7 +289,7 @@ arcpy.Project_management(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect",
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect_project","DELETE_NULL","OGC")
 
 # add and calculate a new area field
-arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersect_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
+input_global = arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersect_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
 
 # GLOBAL SUMMARY REPORTS
 
