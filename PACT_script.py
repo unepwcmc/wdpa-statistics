@@ -313,65 +313,81 @@ for fc in arcpy.ListFeatureClasses():
     arcpy.env.workspace = str(workspace)
     arcpy.env.overwriteOutput = True
 
-# select only sites outside of the ABNJ (they get treated separately)
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project", r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
+    # select only sites outside of the ABNJ (they get treated separately)
+    arcpy.Select_analysis(fc, r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
 
-# change the 'type' field in the non_abnj selection so that ABNJ is always changed to 'EEZ' (nationally designated sites go over into the geographic ABNJ)
-arcpy.CalculateField_management(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","type","!type!.replace('ABNJ','EEZ')", 'PYTHON3')
+    # change the 'type' field in the non_abnj selection so that ABNJ is always changed to 'EEZ' (nationally designated sites go over into the geographic ABNJ)
+    arcpy.CalculateField_management(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","type","!type!.replace('ABNJ','EEZ')", 'PYTHON3')
 
-# run some summary stats on the Land + EEZ selection for the current year (current) and broken down per year (current)
-arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","global_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
-arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj","global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
+    # run some summary stats on the Land + EEZ selection for the current year (current) and broken down per year (current)
+    out_glob_sum_current = desc.basename+"_global_summary_statistics_current"
+    out_glob_sum_temporal = desc.basename+"_global_summary_statistics_temporal"
 
-# select out just the rows with an ISO3 of 'ABNJ'
-arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project",r"in_memory\ABNJ_sites","WDPA_ISO3 = 'ABNJ'")
+    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",out_glob_sum_current,[["AREA_GEO","SUM"]],"type")
+    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",out_glob_sum_temporal,[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
 
-# run some global summary stats on the ABNJ selection for the current year (current) and broken down per year (temporal)
-arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
-arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
+    # select out just the rows with an ISO3 of 'ABNJ'
+    arcpy.Select_analysis(fc,r"in_memory\ABNJ_sites","WDPA_ISO3 = 'ABNJ'")
 
-# pivot the global current, global temporal summary table and the abnj temporal summary tables
-arcpy.PivotTable_management("global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO","global_summary_statistics_temporal_pivot")
-arcpy.PivotTable_management(r"in_memory\abnj_global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO","abnj_summary_statistics_temporal_pivot")
+    # change the 'type' field in the ABNJ_sites selection so that EEZ is always changed to 'ABNJ'
+    arcpy.CalculateField_management(r"in_memory\ABNJ_sites","type","!type!.replace('EEZ','ABNJ')", 'PYTHON3')
 
-# add the abnj tables into the global summary tables
-arcpy.Append_management(r"in_memory\abnj_global_summary_statistics_current","global_summary_statistics_current","NO_TEST")
-arcpy.JoinField_management("global_summary_statistics_temporal_pivot","STATUS_YR","abnj_summary_statistics_temporal_pivot","STATUS_YR", 'ABNJ')
+    # run some global summary stats on the ABNJ selection for the current year (current) and broken down per year (temporal)
+    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
+    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
 
-# update the fields so that they show '0' as opposed to blank cells
-# define the codeblock1
+    # pivot the global current, global temporal summary table and the abnj temporal summary tables
+    out_glob_sum_temporal_pivot = desc.basename+"_global_summary_statistics_temporal_pivot"
+    out_abnj_sum_temporal_pivot = desc.basename+"_abnj_summary_statistics_temporal_pivot"
 
-in_codeblock1 = """
+    arcpy.PivotTable_management(out_glob_sum_temporal,["STATUS_YR"],"type","SUM_AREA_GEO",out_glob_sum_temporal_pivot)
+    arcpy.PivotTable_management(r"in_memory\abnj_global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO",out_abnj_sum_temporal_pivot)
+
+    # add the abnj tables into the global summary tables
+    arcpy.Append_management(r"in_memory\abnj_global_summary_statistics_current",out_glob_sum_current,"NO_TEST")
+    # check if ABNJ field exists in out_abnj_sum_temporal_pivot (i.e. if table isn't empty) and if so, join fields, otherwise create ABNJ field and assign 0 value
+    if len(arcpy.ListFields(out_glob_sum_temporal_pivot,"ABNJ"))!=0:
+        arcpy.JoinField_management(out_glob_sum_temporal_pivot,"STATUS_YR",out_abnj_sum_temporal_pivot,"STATUS_YR", 'ABNJ')
+    else:
+        arcpy.AddField_management(out_glob_sum_temporal_pivot,"ABNJ","LONG")
+        arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"ABNJ",0,"PYTHON_9.3")
+
+    # update the fields so that they show '0' as opposed to blank cells
+    # define the codeblock1
+
+    in_codeblock1 = """
 def updateValue(value):
-  if value == None:
-   return '0'
-  else: return value"""
+        if value == None:
+            return 0
+        else:
+            return value"""
 
-arcpy.CalculateField_management("global_summary_statistics_temporal_pivot","EEZ","updateValue(!EEZ!)","PYTHON_9.3", in_codeblock1)
-arcpy.CalculateField_management("global_summary_statistics_temporal_pivot","Land","updateValue(!Land!)","PYTHON_9.3", in_codeblock1)
-arcpy.CalculateField_management("global_summary_statistics_temporal_pivot","ABNJ","updateValue(!ABNJ!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"EEZ","updateValue(!EEZ!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"Land","updateValue(!Land!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"ABNJ","updateValue(!ABNJ!)","PYTHON_9.3", in_codeblock1)
 
-# Add in three new fields, to track the cumulative area
-arcpy.AddField_management("global_summary_statistics_temporal_pivot","EEZ_net","LONG")
-arcpy.AddField_management("global_summary_statistics_temporal_pivot","Land_net","LONG")
-arcpy.AddField_management("global_summary_statistics_temporal_pivot","ABNJ_net","LONG")
+    # Add in three new fields, to track the cumulative area
+    arcpy.AddField_management(out_glob_sum_temporal_pivot,"EEZ_net","LONG")
+    arcpy.AddField_management(out_glob_sum_temporal_pivot,"Land_net","LONG")
+    arcpy.AddField_management(out_glob_sum_temporal_pivot,"ABNJ_net","LONG")
 
-# Calculate the three net fields
-# define codeblock2
-in_codeblock2 = """
+    # Calculate the three net fields
+    # define codeblock2
+    in_codeblock2 = """
 total = 0
 def accumulate(increment):
- global total
- if total:
-  total += increment
- else:
-  total = increment
- return total"""
+        global total
+        if total:
+            total += increment
+        else:
+            total = increment
+            return total"""
 
-arcpy.CalculateField_management("global_summary_statistics_temporal_pivot","EEZ_net","accumulate(!EEZ!)","PYTHON_9.3", in_codeblock2)
-arcpy.CalculateField_management("global_summary_statistics_temporal_pivot","Land_net","accumulate(!Land!)","PYTHON_9.3", in_codeblock2)
-arcpy.CalculateField_management("global_summary_statistics_temporal_pivot","ABNJ_net","accumulate(!ABNJ!)","PYTHON_9.3", in_codeblock2)
+    arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"EEZ_net","accumulate(!EEZ!)","PYTHON_9.3", in_codeblock2)
+    arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"Land_net","accumulate(!Land!)","PYTHON_9.3", in_codeblock2)
+    arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"ABNJ_net","accumulate(!ABNJ!)","PYTHON_9.3", in_codeblock2)
 
+print ("Stage 1 of 2: Global analysis done")
 
 # REGIONAL SUMMARY REPORTS
 
