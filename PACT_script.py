@@ -293,21 +293,6 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersec
 
 # GLOBAL SUMMARY REPORTS
 
-# PLACEHOLDER FOR OECM STATS
-# SUMMARY TABLE SHOWING HOW MUCH (KM2) OF THE LAND AND SEA ARE COVERED BY OECMs
-
-# select only sites outside of the ABNJ (they get treated separately)
-#arcpy.Select_analysis("in_oecmpoly_intersect_project", r"in_memory\in_oecmpoly_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
-
-# change the 'type' field in the non_abnj selection so that ABNJ is always changed to 'EEZ' (nationally designated sites go over into the geographic ABNJ)
-#arcpy.CalculateField_management(r"in_memory\in_oecmpoly_intersect_project_nonabnj","type","!type!.replace('ABNJ','EEZ')", 'PYTHON3')
-
-# run some summary stats on the Land + EEZ selection for the current year (current) and broken down per year (current)
-#arcpy.Statistics_analysis(r"in_memory\in_oecmpoly_intersect_project_nonabnj","global_oecm_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
-
-#necessary to run now summary stats broken per year??
-#necessary to calculate for ABNJ???
-
 # select only sites outside of the ABNJ (they get treated separately)
 arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project", r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
 
