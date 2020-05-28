@@ -248,7 +248,7 @@ arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_duplicates_padef","M
 # join the pa_def summary report to the copied duplicates
 arcpy.JoinField_management("all_wdpa_polybuffpnt_union_duplicates","XYco","all_wdpa_polybuffpnt_union_duplicates_padef","XYco","MEAN_PA_DEF_INT")
 
-# recalculate status_yr so that each XYco has the earliest status_yr that geometry had
+# recalculate PA_DEF_INT so that each XYco reflects if it includes PA (1), OECMs (0) or both (2)
 arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_duplicates","PA_DEF_INT","!MEAN_PA_DEF_INT!")
 
 # remove the field
