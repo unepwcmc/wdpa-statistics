@@ -296,6 +296,10 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersec
 # create a new feature dataset in the workspace geodatabase for the different sets of sites (whole set, only PAs and only OECMs)
 out_separate_feature_dataset = arcpy.CreateFeatureDataset_management(workspace,"separate_sets")
 
+# change the location of the workspace to represent the location of the new feature dataset that will contain the different sets of sites
+arcpy.env.workspace = str(out_separate_feature_dataset)
+arcpy.env.overwriteOutput = True
+
 # select only sites outside of the ABNJ (they get treated separately)
 arcpy.Select_analysis("all_wdpa_polybuffpnt_union_flat_intersect_project", r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", "WDPA_ISO3 NOT IN ('ABNJ')")
 
