@@ -387,36 +387,45 @@ def accumulate(increment):
     arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"Land_net","accumulate(!Land!)","PYTHON_9.3", in_codeblock2)
     arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"ABNJ_net","accumulate(!ABNJ!)","PYTHON_9.3", in_codeblock2)
 
-print ("Stage 1 of 2: Global analysis done")
+    print ("Stage 1 of 2: Global analysis done")
 
-# REGIONAL SUMMARY REPORTS
+    # REGIONAL SUMMARY REPORTS
 
-# run some summary stats on the regional for the current year (current) and broken down per year (temporal)
-arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",r"in_memory\regional_summary_statistics_current",[["AREA_GEO","SUM"]],["sdg_region","type"])
-arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", r"in_memory\regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR","sdg_region"])
+    # run some summary stats on the regional for the current year (current) and broken down per year (temporal)
+    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",r"in_memory\regional_summary_statistics_current",[["AREA_GEO","SUM"]],["sdg_region","type"])
+    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", r"in_memory\regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR","sdg_region"])
 
-# run some global summary stats on the ABNJ selection for the current year (current) and broken down per year (temporal)
-arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_current",[["AREA_GEO","SUM"]],["type","sdg_region"])
-arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "sdg_region", "STATUS_YR"])
+    # run some global summary stats on the ABNJ selection for the current year (current) and broken down per year (temporal)
+    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_current",[["AREA_GEO","SUM"]],["type","sdg_region"])
+    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "sdg_region", "STATUS_YR"])
 
-# add in the abnj area to the regional summary tables
-arcpy.Append_management(r"in_memory\abnj_regional_summary_statistics_current",r"in_memory\regional_summary_statistics_current","NO_TEST")
-arcpy.Append_management(r"in_memory\abnj_regional_summary_statistics_temporal",r"in_memory\regional_summary_statistics_temporal","NO_TEST")
+    # add in the abnj area to the regional summary tables
+    arcpy.Append_management(r"in_memory\abnj_regional_summary_statistics_current",r"in_memory\regional_summary_statistics_current","NO_TEST")
+    arcpy.Append_management(r"in_memory\abnj_regional_summary_statistics_temporal",r"in_memory\regional_summary_statistics_temporal","NO_TEST")
 
-# pivot the regional temporal summary table and the ABNJ table
-arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_current",["sdg_region"],"type","SUM_AREA_GEO","regional_summary_statistics_current_pivot")
-arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_temporal",["STATUS_YR","sdg_region"],"type","SUM_AREA_GEO","regional_summary_statistics_temporal_pivot")
+    # pivot the regional temporal summary table and the ABNJ table
+    out_reg_sum_current_pivot = desc.basename+"_regional_summary_statistics_current_pivot"
+    out_reg_sum_temporal_pivot = desc.basename+"_regional_summary_statistics_temporal_pivot"
 
-# update the fields so that they show '0' as opposed to blank cells
-arcpy.CalculateField_management("regional_summary_statistics_current_pivot","EEZ","updateValue(!EEZ!)","PYTHON_9.3", in_codeblock1)
-arcpy.CalculateField_management("regional_summary_statistics_current_pivot","Land","updateValue(!Land!)","PYTHON_9.3", in_codeblock1)
-arcpy.CalculateField_management("regional_summary_statistics_current_pivot","ABNJ","updateValue(!ABNJ!)","PYTHON_9.3", in_codeblock1)
+    arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_current",["sdg_region"],"type","SUM_AREA_GEO",out_reg_sum_current_pivot)
+    arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_temporal",["STATUS_YR","sdg_region"],"type","SUM_AREA_GEO",out_reg_sum_temporal_pivot)
 
-arcpy.CalculateField_management("regional_summary_statistics_temporal_pivot","EEZ","updateValue(!EEZ!)","PYTHON_9.3", in_codeblock1)
-arcpy.CalculateField_management("regional_summary_statistics_temporal_pivot","Land","updateValue(!Land!)","PYTHON_9.3", in_codeblock1)
-arcpy.CalculateField_management("regional_summary_statistics_temporal_pivot","ABNJ","updateValue(!ABNJ!)","PYTHON_9.3", in_codeblock1)
+    if len(arcpy.ListFields(out_reg_sum_current_pivot,"ABNJ"))==0:
+        arcpy.AddField_management(out_reg_sum_current_pivot,"ABNJ","LONG")
 
-print ("The global and regional summary tables can now be used by themselves or copied into the monthly summary statistics templates for QC")
+    if len(arcpy.ListFields(out_reg_sum_temporal_pivot,"ABNJ"))==0:
+        arcpy.AddField_management(out_reg_sum_temporal_pivot,"ABNJ","LONG")
+
+    # update the fields so that they show '0' as opposed to blank cells
+    arcpy.CalculateField_management(out_reg_sum_current_pivot,"EEZ","updateValue(!EEZ!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(out_reg_sum_current_pivot,"Land","updateValue(!Land!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(out_reg_sum_current_pivot,"ABNJ","updateValue(!ABNJ!)","PYTHON_9.3", in_codeblock1)
+
+    arcpy.CalculateField_management(out_reg_sum_temporal_pivot,"EEZ","updateValue(!EEZ!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(out_reg_sum_temporal_pivot,"Land","updateValue(!Land!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(out_reg_sum_temporal_pivot,"ABNJ","updateValue(!ABNJ!)","PYTHON_9.3", in_codeblock1)
+
+    print ("The global and regional summary tables can now be used by themselves or copied into the monthly summary statistics templates for QC")
 
 # run some count statistics
 arcpy.Statistics_analysis("all_wdpa_polybuffpnt","count_MARINE",[["WDPAID","COUNT"]],"MARINE")
