@@ -347,7 +347,7 @@ for fc in arcpy.ListFeatureClasses():
     # add the abnj tables into the global summary tables
     arcpy.Append_management(r"in_memory\abnj_global_summary_statistics_current",out_glob_sum_current,"NO_TEST")
     # check if ABNJ field exists in out_abnj_sum_temporal_pivot (i.e. if table isn't empty) and if so, join fields, otherwise create ABNJ field and assign 0 value
-    if len(arcpy.ListFields(out_glob_sum_temporal_pivot,"ABNJ"))!=0:
+    if len(arcpy.ListFields(out_abnj_sum_temporal_pivot,"ABNJ"))!=0:
         arcpy.JoinField_management(out_glob_sum_temporal_pivot,"STATUS_YR",out_abnj_sum_temporal_pivot,"STATUS_YR", 'ABNJ')
     else:
         arcpy.AddField_management(out_glob_sum_temporal_pivot,"ABNJ","LONG")
