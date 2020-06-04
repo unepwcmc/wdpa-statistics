@@ -345,7 +345,16 @@ for fc in arcpy.ListFeatureClasses():
     arcpy.PivotTable_management(r"in_memory\abnj_global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO",out_abnj_sum_temporal_pivot)
 
     # add the abnj tables into the global summary tables
-    arcpy.Append_management(r"in_memory\abnj_global_summary_statistics_current",out_glob_sum_current,"NO_TEST")
+    out_abnj_sum_current = r"in_memory\abnj_global_summary_statistics_current"
+    #check if ABNJ current data exits (i.e. r"in_memory\abnj_global_summary_statistics_current" isn't empty) and if so, append to the global summary table, otherwise add a row and values for ABNJ to out_glob_sum_current
+    if arcpy.management.GetCount(out_abnj_sum_current)[0] != "0":
+        arcpy.Append_management(out_abnj_sum_current, out_glob_sum_current,"NO_TEST")
+    else:
+        Cursor = arcpy.da.InsertCursor(out_glob_sum_current, ["type", "FREQUENCY", "SUM_AREA_GEO"])
+        for x in range (0,1):
+            Cursor.insertRow(("ABNJ", 0, 0))
+        del Cursor
+
     # check if ABNJ field exists in out_abnj_sum_temporal_pivot (i.e. if table isn't empty) and if so, join fields, otherwise create ABNJ field and assign 0 value
     if len(arcpy.ListFields(out_abnj_sum_temporal_pivot,"ABNJ"))!=0:
         arcpy.JoinField_management(out_glob_sum_temporal_pivot,"STATUS_YR",out_abnj_sum_temporal_pivot,"STATUS_YR", 'ABNJ')
@@ -377,12 +386,12 @@ def updateValue(value):
     in_codeblock2 = """
 total = 0
 def accumulate(increment):
-        global total
-        if total:
-            total += increment
-        else:
-            total = increment
-            return total"""
+    global total
+    if total:
+        total += increment
+    else:
+        total = increment
+        return total"""
 
     arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"EEZ_net","accumulate(!EEZ!)","PYTHON_9.3", in_codeblock2)
     arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"Land_net","accumulate(!Land!)","PYTHON_9.3", in_codeblock2)
