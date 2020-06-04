@@ -160,7 +160,7 @@ arcpy.env.workspace = str(workspace)
 # combine the point inputs together depending on whether restricted data is included or not
 if restricted == True:
     all_points = arcpy.Merge_management([in_points,in_restrict_chn_pnt], 'all_points')
-    all_polygons = arcpy.Merge_management([in_oecmpoly, in_polygons, in_restrict_chn_poly, in_restrict_shn_poly, in_restrict_cdda_poly], 'all_polygons')
+    all_polygons = arcpy.Merge_management([in_polygons, in_oecmpoly, in_restrict_chn_poly, in_restrict_shn_poly, in_restrict_cdda_poly], 'all_polygons')
 else:
     all_points = in_points
     all_polygons = in_polygons
