@@ -420,9 +420,9 @@ def accumulate(increment):
     arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_current",["sdg_region"],"type","SUM_AREA_GEO",out_reg_sum_current_pivot)
     arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_temporal",["STATUS_YR","sdg_region"],"type","SUM_AREA_GEO",out_reg_sum_temporal_pivot)
 
+    # check if ABNJ data (field) exists in pivot tables (i.e. if ABNJ data was appended above) and if not, add ABNJ field
     if len(arcpy.ListFields(out_reg_sum_current_pivot,"ABNJ"))==0:
         arcpy.AddField_management(out_reg_sum_current_pivot,"ABNJ","LONG")
-
     if len(arcpy.ListFields(out_reg_sum_temporal_pivot,"ABNJ"))==0:
         arcpy.AddField_management(out_reg_sum_temporal_pivot,"ABNJ","LONG")
 
