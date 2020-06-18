@@ -381,15 +381,14 @@ for fc in arcpy.ListFeatureClasses():
 
     # Calculate the three net fields
     # define codeblock2
-    in_codeblock2 = """
-total = 0
+    in_codeblock2 = """total = 0
 def accumulate(increment):
     global total
     if total:
         total += increment
     else:
         total = increment
-        return total"""
+    return total"""
 
     arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"EEZ_net","accumulate(!EEZ!)","PYTHON_9.3", in_codeblock2)
     arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"Land_net","accumulate(!Land!)","PYTHON_9.3", in_codeblock2)
