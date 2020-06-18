@@ -364,8 +364,7 @@ for fc in arcpy.ListFeatureClasses():
     # update the fields so that they show '0' as opposed to blank cells
     # define the codeblock1
 
-    in_codeblock1 = """
-def updateValue(value):
+    in_codeblock1 = """def updateValue(value):
         if value == None:
             return 0
         else:
