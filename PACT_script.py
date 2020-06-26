@@ -324,8 +324,8 @@ for fc in arcpy.ListFeatureClasses():
     out_glob_sum_current = desc.basename+"_global_summary_statistics_current"
     out_glob_sum_temporal = desc.basename+"_global_summary_statistics_temporal"
 
-    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",out_glob_sum_current,[["AREA_GEO","SUM"]],"type")
-    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",out_glob_sum_temporal,[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
+    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",out_glob_sum_current,[["POLY_AREA","SUM"]],"type")
+    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",out_glob_sum_temporal,[["POLY_AREA","SUM"]],["type", "STATUS_YR"])
 
     # select out just the rows with an ISO3 of 'ABNJ'
     arcpy.Select_analysis(fc,r"in_memory\ABNJ_sites","WDPA_ISO3 = 'ABNJ'")
@@ -334,14 +334,14 @@ for fc in arcpy.ListFeatureClasses():
     arcpy.CalculateField_management(r"in_memory\ABNJ_sites","type","!type!.replace('EEZ','ABNJ')", 'PYTHON3')
 
     # run some global summary stats on the ABNJ selection for the current year (current) and broken down per year (temporal)
-    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_current",[["AREA_GEO","SUM"]],"type")
-    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR"])
+    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_current",[["POLY_AREA","SUM"]],"type")
+    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_temporal",[["POLY_AREA","SUM"]],["type", "STATUS_YR"])
 
     # pivot the global current, global temporal summary table and the abnj temporal summary tables
     out_glob_sum_temporal_pivot = desc.basename+"_global_summary_statistics_temporal_pivot"
 
-    arcpy.PivotTable_management(out_glob_sum_temporal,["STATUS_YR"],"type","SUM_AREA_GEO",out_glob_sum_temporal_pivot)
-    arcpy.PivotTable_management(r"in_memory\abnj_global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_AREA_GEO", r"in_memory\abnj_global_summary_statistics_temporal_pivot")
+    arcpy.PivotTable_management(out_glob_sum_temporal,["STATUS_YR"],"type","SUM_POLY_AREA",out_glob_sum_temporal_pivot)
+    arcpy.PivotTable_management(r"in_memory\abnj_global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_POLY_AREA", r"in_memory\abnj_global_summary_statistics_temporal_pivot")
 
     # add the abnj tables into the global summary tables
     out_abnj_sum_current = r"in_memory\abnj_global_summary_statistics_current"
@@ -349,7 +349,7 @@ for fc in arcpy.ListFeatureClasses():
     if arcpy.management.GetCount(out_abnj_sum_current)[0] != "0":
         arcpy.Append_management(out_abnj_sum_current, out_glob_sum_current,"NO_TEST")
     else:
-        Cursor = arcpy.da.InsertCursor(out_glob_sum_current, ["type", "FREQUENCY", "SUM_AREA_GEO"])
+        Cursor = arcpy.da.InsertCursor(out_glob_sum_current, ["type", "FREQUENCY", "SUM_POLY_AREA"])
         for x in range (0,1):
             Cursor.insertRow(("ABNJ", 0, 0))
         del Cursor
@@ -399,12 +399,12 @@ def accumulate(increment):
     # REGIONAL SUMMARY REPORTS
 
     # run some summary stats on the regional for the current year (current) and broken down per year (temporal)
-    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",r"in_memory\regional_summary_statistics_current",[["AREA_GEO","SUM"]],["GEOandUNEP","type"])
-    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", r"in_memory\regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "STATUS_YR","GEOandUNEP"])
+    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj",r"in_memory\regional_summary_statistics_current",[["POLY_AREA","SUM"]],["GEOandUNEP","type"])
+    arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect_project_nonabnj", r"in_memory\regional_summary_statistics_temporal",[["POLY_AREA","SUM"]],["type", "STATUS_YR","GEOandUNEP"])
 
     # run some global summary stats on the ABNJ selection for the current year (current) and broken down per year (temporal)
-    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_current",[["AREA_GEO","SUM"]],["type","GEOandUNEP"])
-    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_temporal",[["AREA_GEO","SUM"]],["type", "GEOandUNEP", "STATUS_YR"])
+    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_current",[["POLY_AREA","SUM"]],["type","GEOandUNEP"])
+    arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_regional_summary_statistics_temporal",[["POLY_AREA","SUM"]],["type", "GEOandUNEP", "STATUS_YR"])
 
     # add in the abnj area to the regional summary tables
     arcpy.Append_management(r"in_memory\abnj_regional_summary_statistics_current",r"in_memory\regional_summary_statistics_current","NO_TEST")
@@ -414,8 +414,8 @@ def accumulate(increment):
     out_reg_sum_current_pivot = desc.basename+"_regional_summary_statistics_current_pivot"
     out_reg_sum_temporal_pivot = desc.basename+"_regional_summary_statistics_temporal_pivot"
 
-    arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_current",["GEOandUNEP"],"type","SUM_AREA_GEO",out_reg_sum_current_pivot)
-    arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_temporal",["STATUS_YR","GEOandUNEP"],"type","SUM_AREA_GEO",out_reg_sum_temporal_pivot)
+    arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_current",["GEOandUNEP"],"type","SUM_POLY_AREA",out_reg_sum_current_pivot)
+    arcpy.PivotTable_management(r"in_memory\regional_summary_statistics_temporal",["STATUS_YR","GEOandUNEP"],"type","SUM_POLY_AREA",out_reg_sum_temporal_pivot)
 
     # check if ABNJ data (field) exists in pivot tables (i.e. if ABNJ data was appended above) and if not, add ABNJ field
     if len(arcpy.ListFields(out_reg_sum_current_pivot,"ABNJ"))==0:
@@ -450,7 +450,7 @@ arcpy.Select_analysis("all_wdpa_polybuffpnt", r"in_memory\notake_all","NO_TAKE =
 arcpy.Dissolve_management(r"in_memory\notake_all",r"in_memory\notake_all_diss")
 arcpy.Project_management(r"in_memory\notake_all_diss","notakeall_diss_project",in_mollweideprj)
 arcpy.AddGeometryAttributes_management("notakeall_diss_project","AREA","","SQUARE_KILOMETERS",in_mollweideprj)
-arcpy.Statistics_analysis("notakeall_diss_project","sum_NOTAKEall",[["AREA_GEO","SUM"]])
+arcpy.Statistics_analysis("notakeall_diss_project","sum_NOTAKEall",[["POLY_AREA","SUM"]])
 
 arcpy.Select_analysis("all_wdpa_polybuffpnt", r"in_memory\notake_part","NO_TAKE = 'Part'")
 arcpy.Statistics_analysis(r"in_memory\notake_part","sum_NOTAKEpart",[["NO_TK_AREA","SUM"]])
