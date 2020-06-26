@@ -290,7 +290,7 @@ arcpy.Project_management(r"in_memory\all_wdpa_polybuffpnt_union_flat_intersect",
 arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_union_flat_intersect_project","DELETE_NULL","OGC")
 
 # add and calculate a new area field
-input_global = arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersect_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
+input_global = arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_union_flat_intersect_project","AREA","","SQUARE_KILOMETERS",in_mollweideprj)
 
 # GLOBAL SUMMARY REPORTS
 
@@ -449,7 +449,7 @@ arcpy.Statistics_analysis("all_wdpa_polybuffpnt","count_OWNTYPE",[["WDPAID","COU
 arcpy.Select_analysis("all_wdpa_polybuffpnt", r"in_memory\notake_all","NO_TAKE = 'All'")
 arcpy.Dissolve_management(r"in_memory\notake_all",r"in_memory\notake_all_diss")
 arcpy.Project_management(r"in_memory\notake_all_diss","notakeall_diss_project",in_mollweideprj)
-arcpy.AddGeometryAttributes_management("notakeall_diss_project","AREA_GEODESIC","","SQUARE_KILOMETERS",in_mollweideprj)
+arcpy.AddGeometryAttributes_management("notakeall_diss_project","AREA","","SQUARE_KILOMETERS",in_mollweideprj)
 arcpy.Statistics_analysis("notakeall_diss_project","sum_NOTAKEall",[["AREA_GEO","SUM"]])
 
 arcpy.Select_analysis("all_wdpa_polybuffpnt", r"in_memory\notake_part","NO_TAKE = 'Part'")
