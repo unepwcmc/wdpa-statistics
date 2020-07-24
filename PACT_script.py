@@ -60,9 +60,10 @@ if restricted == True:
     # define location of restricted EST polygons
     in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
 
-print ("Stage 0.2: PAME sites")
-# define the list of protected areas that have pame assessments
+print ("Stage 0.2: PAME sites and Green List sites")
+# define the list of protected areas that have pame assessments or green list assessments
 in_pame_sites = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\PAME_Sites"
+in_greenlist_sites = r"I:\_Monthly_Coverage_Stats_\2020\07_July_2020\green_list_july2020.csv"
 
 print ("Stage 0.3: OECM sites")
 # define the input for the oecm data
@@ -463,7 +464,38 @@ print(("Stage 1 took " + str(elapsed_hours) + " hours"))
 
 print ("Stage 2 of 2: National & National PAME Analyses")
 
-# create the summary tables for appending in individual natioanl summary statistics
+# calculte the green list Statistics_analysis
+# join green list to polybuffpnt
+arcpy.JoinField_management("all_wdpa_polybuffpnt","WDPA_PID",in_greenlist_sites,"gl_wdpa_pid","gl_status")
+
+# select out green list sites
+arcpy.Select_analysis("all_wdpa_polybuffpnt","all_wdpa_polybuffpnt_greenlist","gl_status IS NOT NULL")
+
+# do a count of how many green list sites there area
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt","count_GREENLIST",[["WDPA_PID","COUNT"]],)
+
+# create a subset of these that are certified green list ABNJ_sites
+arcpy.Select_analysis("all_wdpa_polybuffpnt_greenlist",r"in_memory\all_wdpa_polybuffpnt_greenlist_certified","status in ('Green Listed', 'Relisted')")
+
+# flatten these abnj_regional_summary_statistics_current
+arcpy.Dissolve_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certified",r"in_memory\all_wdpa_polybuffpnt_greenlist_certified_diss")
+
+# Repair the geometry 
+arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certified_diss","DELETE_NULL","OGC")
+
+# Project to mollweide
+arcpy.Project_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certified_diss","all_wdpa_polybuffpnt_greenlist_certified_diss_proj",in_mollweideprj)
+
+# Calculate areas
+arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_greenlist_certified_diss_proj","AREA","","SQUARE_KILOMETERS",in_mollweideprj)
+
+# do a summary table of green listed area
+arcpy.Statistics_analysis("all_wdpa_polybuffpnt_greenlist_certified_diss_proj","sum_green_list_area",[["POLY_AREA","SUM"]])
+
+
+
+
+# create the summary tables for appending in individual national summary statistics
 out_national_current_schema = arcpy.CreateTable_management(workspace,"out_national_current_schema")
 arcpy.AddFields_management(out_national_current_schema,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
 
@@ -475,6 +507,9 @@ arcpy.AddFields_management(out_national_current_schema_pame,[['WDPA_ISO3','TEXT'
 
 out_national_temporal_schema_pame = arcpy.CreateTable_management(workspace,"out_national_temporal_schema_pame")
 arcpy.AddFields_management(out_national_temporal_schema_pame,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
+
+
+
 
 # join pame list to polybuffpnt
 arcpy.JoinField_management("all_wdpa_polybuffpnt","WDPAID",in_pame_sites,"wdpa_id","evaluation_id")
