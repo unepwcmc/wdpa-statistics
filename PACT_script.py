@@ -470,6 +470,7 @@ print(("Stage 1 took " + str(elapsed_hours) + " hours"))
 
 print ("Stage 2 of 2: National & National PAME Analyses")
 
+# start preparation of all_wdpa_polybuffpnt to be used for national stats
 # join pame list to polybuffpnt
 arcpy.JoinField_management("all_wdpa_polybuffpnt","WDPAID",in_pame_sites,"wdpa_id","evaluation_id")
 
