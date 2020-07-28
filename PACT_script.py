@@ -483,31 +483,6 @@ arcpy.Statistics_analysis("all_wdpa_polybuffpnt","count_GREENLIST",[["WDPA_PID",
 
 # create a subset of these that are certified green list ABNJ_sites
 arcpy.Select_analysis("all_wdpa_polybuffpnt_greenlist",r"in_memory\all_wdpa_polybuffpnt_greenlist_certified","status in ('Green Listed', 'Relisted')")
-<<<<<<< HEAD
-=======
-
-# flatten these abnj_regional_summary_statistics_current
-arcpy.Dissolve_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certified",r"in_memory\all_wdpa_polybuffpnt_greenlist_certified_diss")
-
-# Repair the geometry 
-arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certified_diss","DELETE_NULL","OGC")
-
-# Project to mollweide
-arcpy.Project_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certified_diss","all_wdpa_polybuffpnt_greenlist_certified_diss_proj",in_mollweideprj)
-
-# Calculate areas
-arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_greenlist_certified_diss_proj","AREA","","SQUARE_KILOMETERS",in_mollweideprj)
-
-# do a summary table of green listed area
-arcpy.Statistics_analysis("all_wdpa_polybuffpnt_greenlist_certified_diss_proj","sum_green_list_area",[["POLY_AREA","SUM"]])
-
-
-
-
-# create the summary tables for appending in individual national summary statistics
-out_national_current_schema = arcpy.CreateTable_management(workspace,"out_national_current_schema")
-arcpy.AddFields_management(out_national_current_schema,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
->>>>>>> d750635c2a0506603bacae1763c0eb9a2b95c492
 
 # flatten these abnj_regional_summary_statistics_current
 arcpy.Dissolve_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certified",r"in_memory\all_wdpa_polybuffpnt_greenlist_certified_diss")
@@ -518,7 +493,6 @@ arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certi
 # Project to mollweide
 arcpy.Project_management(r"in_memory\all_wdpa_polybuffpnt_greenlist_certified_diss","all_wdpa_polybuffpnt_greenlist_certified_diss_proj",in_mollweideprj)
 
-<<<<<<< HEAD
 # Calculate areas
 arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_greenlist_certified_diss_proj","AREA","","SQUARE_KILOMETERS",in_mollweideprj)
 
@@ -526,11 +500,6 @@ arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_greenlist_certified
 arcpy.Statistics_analysis("all_wdpa_polybuffpnt_greenlist_certified_diss_proj","sum_green_list_area",[["POLY_AREA","SUM"]])
 
 # start preparation of all_wdpa_polybuffpnt to be used for national stats
-=======
-
-
-
->>>>>>> d750635c2a0506603bacae1763c0eb9a2b95c492
 # join pame list to polybuffpnt
 arcpy.JoinField_management("all_wdpa_polybuffpnt","WDPAID",in_pame_sites,"wdpa_id","evaluation_id")
 
