@@ -337,15 +337,22 @@ for fc in arcpy.ListFeatureClasses():
     arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_current",[["POLY_AREA","SUM"]],"type")
     arcpy.Statistics_analysis(r"in_memory\ABNJ_sites",r"in_memory\abnj_global_summary_statistics_temporal",[["POLY_AREA","SUM"]],["type", "STATUS_YR"])
 
-    # pivot the global current, global temporal summary table and the abnj temporal summary tables
+    # pivot the global temporal summary table and the abnj temporal summary tables
     out_glob_sum_temporal_pivot = desc.basename+"_global_summary_statistics_temporal_pivot"
 
     arcpy.PivotTable_management(out_glob_sum_temporal,["STATUS_YR"],"type","SUM_POLY_AREA",out_glob_sum_temporal_pivot)
     arcpy.PivotTable_management(r"in_memory\abnj_global_summary_statistics_temporal",["STATUS_YR"],"type","SUM_POLY_AREA", r"in_memory\abnj_global_summary_statistics_temporal_pivot")
 
     # add the abnj tables into the global summary tables
-    out_abnj_sum_current = r"in_memory\abnj_global_summary_statistics_current"
+    # check if ABNJ field exists in out_abnj_sum_temporal_pivot (i.e. if table isn't empty) and if so, join fields, otherwise create ABNJ field and assign 0 value
+    if len(arcpy.ListFields(r"in_memory\abnj_global_summary_statistics_temporal_pivot","ABNJ"))!=0:
+        arcpy.JoinField_management(out_glob_sum_temporal_pivot,"STATUS_YR", r"in_memory\abnj_global_summary_statistics_temporal_pivot","STATUS_YR", 'ABNJ')
+    else:
+        arcpy.AddField_management(out_glob_sum_temporal_pivot,"ABNJ","LONG")
+        arcpy.CalculateField_management(out_glob_sum_temporal_pivot,"ABNJ",0,"PYTHON_9.3")
+
     #check if ABNJ current data exits (i.e. r"in_memory\abnj_global_summary_statistics_current" isn't empty) and if so, append to the global summary table, otherwise add a row and values for ABNJ to out_glob_sum_current
+    out_abnj_sum_current = r"in_memory\abnj_global_summary_statistics_current"
     if arcpy.management.GetCount(out_abnj_sum_current)[0] != "0":
         arcpy.Append_management(out_abnj_sum_current, out_glob_sum_current,"NO_TEST")
     else:
