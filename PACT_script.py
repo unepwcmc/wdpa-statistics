@@ -463,19 +463,6 @@ print(("Stage 1 took " + str(elapsed_hours) + " hours"))
 
 print ("Stage 2 of 2: National & National PAME Analyses")
 
-# create the summary tables for appending in individual natioanl summary statistics
-out_national_current_schema = arcpy.CreateTable_management(workspace,"out_national_current_schema")
-arcpy.AddFields_management(out_national_current_schema,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
-
-out_national_temporal_schema = arcpy.CreateTable_management(workspace,"out_national_temporal_schema")
-arcpy.AddFields_management(out_national_temporal_schema,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
-
-out_national_current_schema_pame = arcpy.CreateTable_management(workspace,"out_national_current_schema_pame")
-arcpy.AddFields_management(out_national_current_schema_pame,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
-
-out_national_temporal_schema_pame = arcpy.CreateTable_management(workspace,"out_national_temporal_schema_pame")
-arcpy.AddFields_management(out_national_temporal_schema_pame,[['WDPA_ISO3','TEXT'],['MIN_STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_AREA_GEO','DOUBLE']])
-
 # join pame list to polybuffpnt
 arcpy.JoinField_management("all_wdpa_polybuffpnt","WDPAID",in_pame_sites,"wdpa_id","evaluation_id")
 
