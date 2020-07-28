@@ -478,25 +478,25 @@ arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundar
 arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_transboundary","DELETE_NULL","OGC")
 
 # erase the transboundary sites from the nontransboundary sites
-arcpy.Erase_analysis(r"in_memory\all_wdpa_polybuffpnt_transboundary",r"in_memory\all_wdpa_polybuffpnt_nontransboundary","all_wdpa_polybuffpnt_transboundary_novelarea")
+arcpy.Erase_analysis(r"in_memory\all_wdpa_polybuffpnt_transboundary",r"in_memory\all_wdpa_polybuffpnt_nontransboundary",r"all_wdpa_polybuffpnt_transboundary_novelarea")
 
 # repair the output of the erase
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_novelarea","DELETE_NULL","OGC")
+arcpy.RepairGeometry_management(r"all_wdpa_polybuffpnt_transboundary_novelarea","DELETE_NULL","OGC")
 
 # intersect the erased output with the basemap
-arcpy.PairwiseIntersect_analysis(["all_wdpa_polybuffpnt_transboundary_novelarea",in_basemap_spat],"all_wdpa_polybuffpnt_transboundary_novelarea_intersect")
+arcpy.PairwiseIntersect_analysis([r"all_wdpa_polybuffpnt_transboundary_novelarea",in_basemap_spat],r"all_wdpa_polybuffpnt_transboundary_novelarea_intersect")
 
 # repair it
-arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_transboundary_novelarea_intersect","DELETE_NULL","OGC")
+arcpy.RepairGeometry_management(r"all_wdpa_polybuffpnt_transboundary_novelarea_intersect","DELETE_NULL","OGC")
 
 #  recalculate ISO3 based on the geo iso3
-arcpy.CalculateField_management("all_wdpa_polybuffpnt_transboundary_novelarea_intersect","WDPA_ISO3","!GEO_ISO3!","PYTHON_9.3")
+arcpy.CalculateField_management(r"all_wdpa_polybuffpnt_transboundary_novelarea_intersect","WDPA_ISO3","!GEO_ISO3!","PYTHON_9.3")
 
 # rename the nontransboundary sites
 #arcpy.Rename_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary",r"in_memory\all_wdpa_polybuffpnt_national")
 
 # append back the erased and intersected transboundary sites back into the nontransboundary sites
-arcpy.Append_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary","all_wdpa_polybuffpnt_transboundary_novelarea_intersect","NO_TEST")
+arcpy.Append_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary",r"all_wdpa_polybuffpnt_transboundary_novelarea_intersect","NO_TEST")
 
 # repair it
 arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary","DELETE_NULL","OGC")
