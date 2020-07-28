@@ -501,6 +501,274 @@ arcpy.Append_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary",r"all
 # repair it
 arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary","DELETE_NULL","OGC")
 
+# split up the all_wdpa_polybuffpnt_nontransboundary using the Union tool - this splits up the WDPA like a Venn diagram
+arcpy.Union_analysis(r"in_memory\all_wdpa_polybuffpnt_nontransboundary",r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union")
+
+# repair the output of the union
+arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","DELETE_NULL","OGC")
+
+# add xy coordinates for each of the ~1 million segments
+arcpy.AddGeometryAttributes_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","CENTROID")
+
+# add a new field to concatenate the new x and y coordinate fields
+arcpy.AddField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","XYco","TEXT")
+
+# populate this new XYco field
+arcpy.CalculateField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","XYco","str(!CENTROID_X!) + str(!CENTROID_Y!)","PYTHON_9.3")
+
+# run two summary reports per parcel, working out the minimum STATUS_YR and the maximum evaluation_id (i.e. whether assessed or not)
+arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union",r"in_memory\out_styr_stats",[["STATUS_YR","MIN"]],"XYco")
+arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union",r"in_memory\out_assid_stats",[["evaluation_id","MAX"]],"XYco")
+
+ #run a summary report listing whether that XYco includes PA (1), OECMs (0) or both (if both the mean will be between 0 and 1)
+arcpy.Statistics_analysis(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union",r"in_memory\out_padef",[["PA_DEF_INT","MEAN"]],"XYco")
+
+# update the PA_DEF so that areas that cover both PA and OECM have a PA_DEF_INT of 2
+arcpy.CalculateField_management(r"in_memory\out_padef","MEAN_PA_DEF_INT","updateValue(!MEAN_PA_DEF_INT!)","PYTHON_9.3", in_codeblock0)
+
+# join the pa_def summary report to the copied duplicates
+arcpy.JoinField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","XYco",r"in_memory\out_padef","XYco","MEAN_PA_DEF_INT")
+
+# recalculate PA_DEF_INT so that each XYco reflects if it includes PA (1), OECMs (0) or both (2)
+arcpy.CalculateField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","PA_DEF_INT","!MEAN_PA_DEF_INT!")
+
+# remove the field
+arcpy.DeleteField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","MEAN_PA_DEF_INT")
+
+# delete all identical XYcos, we dont care about the values, just the geometreis and making it flat
+arcpy.DeleteIdentical_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","XYco")
+
+# add in the earliest designation date
+arcpy.JoinField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","XYco",r"in_memory\out_styr_stats","XYco","MIN_status_yr")
+
+# recalculate status_yr so that each XYco has the earliest status_yr that geometry had
+arcpy.CalculateField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","STATUS_YR","!MIN_status_yr!")
+
+# remove the field
+arcpy.DeleteField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","MIN_status_yr")
+
+# add in whether it was assessed to each segment
+arcpy.JoinField_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","XYco",r"in_memory\out_assid_stats","XYco", 'MAX_evaluation_id')
+
+# repair the layer
+arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union","DELETE_NULL","OGC")
+
+# intersect it with the basemap
+arcpy.PairwiseIntersect_analysis([r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union",in_basemap_spat],r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union_intersect")
+
+# repair it
+arcpy.RepairGeometry_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union_intersect","DELETE_NULL","OGC")
+
+# project it into mollweide, an equal area projection
+arcpy.Project_management(r"in_memory\all_wdpa_polybuffpnt_nontransboundary_union_intersect","all_wdpa_polybuffpnt_nontransboundary_union_intersect_project",in_mollweideprj)
+
+# repair it
+arcpy.RepairGeometry_management("all_wdpa_polybuffpnt_nontransboundary_union_intersect_project","DELETE_NULL","OGC")
+
+# add and calculate a new area field
+input_national = arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_nontransboundary_union_intersect_project","AREA","","SQUARE_KILOMETERS",in_mollweideprj)
+
+# create a new feature dataset in the workspace geodatabase for the different sets of sites (whole set, only PAs and only OECMs)
+out_separate_feature_dataset_national = arcpy.CreateFeatureDataset_management(workspace,"separate_sets_national")
+
+# change the location of the workspace to represent the location of the new feature dataset that will contain the different subsets of sites
+arcpy.env.workspace = str(out_separate_feature_dataset_national)
+arcpy.env.overwriteOutput = True
+
+# copy whole dataset (i.e. PA_DEF_INT =  0 & PA_DEF_INT =  1 & PA_DEF_INT =  2)  and save it in feature dataset
+arcpy.CopyFeatures_management(input_national, "whole_set_nat")
+# select out only PA sites (i.e. PA_DEF_INT =  1 & PA_DEF_INT =  2) and save it in feature dataset
+arcpy.Select_analysis(input_national, "pa_set_nat", "PA_DEF_INT IN (1, 2)")
+# select out only OECM sites (i.e. PA_DEF_INT =  0 & PA_DEF_INT =  2) and save it in feature dataset
+arcpy.Select_analysis(input_national, "oecm_set_nat", "PA_DEF_INT IN (0, 2)")
+
+# list the feature classes in the  feature dataset
+for fc in arcpy.ListFeatureClasses():
+    desc = arcpy.Describe(fc)
+    arcpy.env.workspace = str(workspace)
+    arcpy.env.overwriteOutput = True
+
+    # create the summary tables for appending in individual natioanl summary statistics
+    out_national_current_schema_name = desc.basename+"_out_national_current_schema"
+    out_national_current_schema = arcpy.CreateTable_management(workspace,out_national_current_schema_name)
+    arcpy.AddFields_management(out_national_current_schema,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_POLY_AREA','DOUBLE']])
+
+    out_national_temporal_schema_name = desc.basename+"_out_national_temporal_schema"
+    out_national_temporal_schema = arcpy.CreateTable_management(workspace,out_national_temporal_schema_name)
+    arcpy.AddFields_management(out_national_temporal_schema,[['WDPA_ISO3','TEXT'],['STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_POLY_AREA','DOUBLE']])
+
+    out_national_current_schema_pame_name = desc.basename+"_out_national_current_schema_pame"
+    out_national_current_schema_pame = arcpy.CreateTable_management(workspace,out_national_current_schema_pame_name)
+    arcpy.AddFields_management(out_national_current_schema_pame,[['WDPA_ISO3','TEXT'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_POLY_AREA','DOUBLE']])
+
+    out_national_temporal_schema_pame_name = desc.basename+"_out_national_temporal_schema_pame"
+    out_national_temporal_schema_pame = arcpy.CreateTable_management(workspace,out_national_temporal_schema_pame_name)
+    arcpy.AddFields_management(out_national_temporal_schema_pame,[['WDPA_ISO3','TEXT'],['STATUS_YR','DOUBLE'],['type','TEXT'],['FREQUENCY','LONG'],['SUM_POLY_AREA','DOUBLE']])
+
+    # split by attribute (wdpa_iso3) to create an individual fc for each iso3
+    arcpy.SplitByAttributes_analysis(fc,sbafolder, "WDPA_ISO3")
+
+    # change the location of the workspace to represent the location of the sba output
+    arcpy.env.workspace = str(sbafolder)
+    arcpy.env.overwriteOutput = True
+
+    out_sba = arcpy.ListFeatureClasses()
+    for fc in out_sba:
+    #for fc in arcpy.ListFeatureClasses():
+        #desc = arcpy.Describe(fc)
+
+        # for national reporting they can't report by ABNJ, so we treat areas in geographical ABNJ as actually being part of the ISO3's EEZ
+        arcpy.CalculateField_management(fc,"type","!type!.replace('ABNJ','EEZ')", 'PYTHON3')
+
+        # create national pa/oecm/whole summary statistics
+        arcpy.Statistics_analysis(fc,r"in_memory\out_styr_sum_current",[["POLY_AREA","SUM"]],["WDPA_ISO3","type"])
+        arcpy.Statistics_analysis(fc,r"in_memory\out_styr_sum_temporal",[["POLY_AREA","SUM"]],["WDPA_ISO3","STATUS_YR","type"])
+
+        # append each of the national pa/oecm/whole coverage tables into a clean precooked schema and all of the temporal pivot tables into another clean precooked schema
+        arcpy.Append_management(r"in_memory\out_styr_sum_current",out_national_current_schema,"NO_TEST")
+        arcpy.Append_management(r"in_memory\out_styr_sum_temporal",out_national_temporal_schema,"NO_TEST")
+
+        # select the areas where there has been a pame assessment to only run statistics on those areas
+        arcpy.Select_analysis(fc,r"in_memory\out_ass_sites","MAX_evaluation_id >= 1")
+
+        # create national pa PAME summary statistics
+        arcpy.Statistics_analysis(r"in_memory\out_ass_sites",r"in_memory\out_ass_sum_current",[["POLY_AREA","SUM"]],["WDPA_ISO3","type"])
+        arcpy.Statistics_analysis(r"in_memory\out_ass_sites",r"in_memory\out_ass_sum_temporal",[["POLY_AREA","SUM"]],["WDPA_ISO3","STATUS_YR","type"])
+
+        # append each of the national pa PAME coverage tables into a clean precooked schema and all of the temporal PAME data into another clean precooked schema
+        arcpy.Append_management(r"in_memory\out_ass_sum_current",out_national_current_schema_pame,"NO_TEST")
+        arcpy.Append_management(r"in_memory\out_ass_sum_temporal",out_national_temporal_schema_pame,"NO_TEST")
+
+    # empty sba folder
+    for fc in out_sba:
+        arcpy.Delete_management(fc)
+
+        # delete the in_memory workspace before starting the next country
+        arcpy.Delete_management(r"in_memory")
+
+    # we now return back to the original workspace
+    arcpy.env.workspace = str(workspace)
+
+    # NATIONAL TEMPORAL REPORTS
+    # create summary tables for national status
+
+    # pivot the temporal national summary tables
+    national_summary_statistics_temporal_pivot = desc.basename+"_national_summary_statistics_temporal_pivot"
+    arcpy.PivotTable_management(out_national_temporal_schema,["WDPA_ISO3","STATUS_YR"],"type","SUM_POLY_AREA",national_summary_statistics_temporal_pivot)
+
+    # update temporal national field names (if they exist), replace <Null> with 0, add ABNJ area to EEZ field
+    if len(arcpy.ListFields(national_summary_statistics_temporal_pivot,"WDPA_ISO3"))!=0:
+        arcpy.AlterField_management(national_summary_statistics_temporal_pivot,"WDPA_ISO3","iso3")
+    if len(arcpy.ListFields(national_summary_statistics_temporal_pivot,"STATUS_YR"))!=0:
+        arcpy.AlterField_management(national_summary_statistics_temporal_pivot,"STATUS_YR","year")
+    if len(arcpy.ListFields(national_summary_statistics_temporal_pivot,"Land"))!=0:
+        arcpy.AlterField_management(national_summary_statistics_temporal_pivot,"Land","pa_land_area")
+        arcpy.CalculateField_management(national_summary_statistics_temporal_pivot,"pa_land_area","updateValue(!pa_land_area!)","PYTHON_9.3", in_codeblock1)
+    #else:
+    #    arcpy.AddField_management(national_summary_statistics_temporal_pivot,"pa_land_area","LONG")
+    #    arcpy.CalculateField_management(national_summary_statistics_temporal_pivot,"pa_land_area",0,"PYTHON_9.3")
+
+    if len(arcpy.ListFields(national_summary_statistics_temporal_pivot,"EEZ"))!=0:
+        arcpy.AlterField_management(national_summary_statistics_temporal_pivot,"EEZ","pa_marine_area")
+        arcpy.CalculateField_management(national_summary_statistics_temporal_pivot,"pa_marine_area","updateValue(!pa_marine_area!)","PYTHON_9.3", in_codeblock1)
+    if len(arcpy.ListFields(national_summary_statistics_temporal_pivot,"NET_POLY_AREA"))!=0:
+        arcpy.AddField_management(national_summary_statistics_temporal_pivot,"pa_land_area_net_km2","LONG")
+        arcpy.CalculateField_management(national_summary_statistics_temporal_pivot,"pa_land_area_net_km2","accumulate(!pa_land_area!)","PYTHON_9.3", in_codeblock2)
+        arcpy.AddField_management(national_summary_statistics_temporal_pivot,"pa_marine_area_net_km2","LONG")
+        arcpy.CalculateField_management(national_summary_statistics_temporal_pivot,"pa_marine_area_net_km2","accumulate(!pa_marine_area!)","PYTHON_9.3", in_codeblock2)
+
+    # NATIONAL CURRENT REPORTS
+    # create summary tables for national status
+
+    # pivot the current national summary tables
+    national_summary_statistics_current_pivot = desc.basename+"_national_summary_statistics_current_pivot"
+    arcpy.PivotTable_management(out_national_current_schema,"WDPA_ISO3","type","SUM_POLY_AREA",national_summary_statistics_current_pivot)
+
+    # rename fields
+    arcpy.AlterField_management(national_summary_statistics_current_pivot,"WDPA_ISO3","iso3")
+    arcpy.AlterField_management(national_summary_statistics_current_pivot,"Land","pa_land_area")
+    arcpy.AlterField_management(national_summary_statistics_current_pivot,"EEZ","pa_marine_area")
+
+    # join current national to the basemap
+    arcpy.JoinField_management(national_summary_statistics_current_pivot,"iso3",in_basemap_tab,"GEO_ISO3",["land_area", "marine_area"])
+
+    # add the current national fields to calculate percentage coverage
+    arcpy.AddField_management(national_summary_statistics_current_pivot,"percentage_pa_marine_cover","FLOAT")
+    arcpy.AddField_management(national_summary_statistics_current_pivot,"percentage_pa_land_cover","FLOAT")
+
+    # calculate current national fields and replace <Null> values with 0
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"percentage_pa_land_cover","(!pa_land_area! / !land_area!)*100","PYTHON_9.3")
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"percentage_pa_marine_cover","(!pa_marine_area! / !marine_area!)*100","PYTHON_9.3")
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"pa_land_area","updateValue(!percentage_pa_land_cover!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"pa_marine_area","updateValue(!percentage_pa_marine_cover!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"percentage_pa_land_cover","updateValue(!percentage_pa_land_cover!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"percentage_pa_marine_cover","updateValue(!percentage_pa_marine_cover!)","PYTHON_9.3", in_codeblock1)
+
+    # pivot the current national pame summary tables
+    national_summary_statistics_current_pivot_pame = desc.basename+"_national_summary_statistics_current_pivot_pame"
+    arcpy.PivotTable_management(out_national_current_schema_pame,"WDPA_ISO3","type","SUM_POLY_AREA",national_summary_statistics_current_pivot_pame)
+
+    # rename fields
+    arcpy.AlterField_management(national_summary_statistics_current_pivot_pame,"WDPA_ISO3","iso3")
+    if len(arcpy.ListFields(national_summary_statistics_current_pivot_pame,"Land"))!=0:
+        arcpy.AlterField_management(national_summary_statistics_current_pivot_pame,"Land","pame_pa_land_area")
+    else:
+        arcpy.AddField_management(national_summary_statistics_current_pivot_pame,"pame_pa_land_area","LONG")
+        arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_pa_land_area",0,"PYTHON_9.3")
+    #arcpy.AlterField_management(national_summary_statistics_current_pivot_pame,"Land","pame_pa_land_area")
+    arcpy.AlterField_management(national_summary_statistics_current_pivot_pame,"EEZ","pame_pa_marine_area")
+
+    # join current national pame to current national
+    arcpy.JoinField_management(national_summary_statistics_current_pivot_pame,"iso3",national_summary_statistics_current_pivot,"iso3",["pa_land_area", "pa_marine_area"])
+
+    # calculate pame percentage fields
+    arcpy.AddField_management(national_summary_statistics_current_pivot_pame,"pame_percentage_pa_land_cover","FLOAT")
+    arcpy.AddField_management(national_summary_statistics_current_pivot_pame,"pame_percentage_pa_marine_cover","FLOAT")
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_percentage_pa_land_cover","(!pame_pa_land_area! / !pa_land_area!)*100","PYTHON_9.3")
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_percentage_pa_marine_cover","(!pame_pa_marine_area! / !pa_marine_area!)*100","PYTHON_9.3")
+
+    # update all pame fields so that <Null> is replaced by 0
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_pa_marine_area","updateValue(!pame_pa_marine_area!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_pa_land_area","updateValue(!pame_pa_land_area!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_percentage_pa_land_cover","updateValue(!pame_percentage_pa_land_cover!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_percentage_pa_marine_cover","updateValue(!pame_percentage_pa_marine_cover!)","PYTHON_9.3", in_codeblock1)
+
+    # Join the current national pame table to the current national table
+    arcpy.JoinField_management(national_summary_statistics_current_pivot,"iso3",national_summary_statistics_current_pivot_pame,"iso3",["pame_pa_land_area", "pame_pa_marine_area"])
+    # update all pame fields so that <Null> is replaced by 0
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"pame_pa_marine_area","updateValue(!pame_pa_marine_area!)","PYTHON_9.3", in_codeblock1)
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"pame_pa_land_area","updateValue(!pame_pa_land_area!)","PYTHON_9.3", in_codeblock1)
+
+    # join the national current summary stats to the cbd nr csv from teh github supporting Github_supporting_files
+    arcpy.JoinField_management(in_cbd_nr,"ISO3",national_summary_statistics_current_pivot,"iso3",["percentage_nr_land_cover","percentage_nr_marine_cover","nr_version","nr_report_url"])
+
+    define the codeblock3
+
+    in_codeblock3 = """
+    def updateValue(value):
+      if value == None:
+       return 'na'
+      else: return value"""
+
+    # update the nr_report_url field to equal na instead of <Null>
+    arcpy.CalculateField_management(national_summary_statistics_current_pivot,"nr_report_url","updateValue(!nr_report_url!)","PYTHON_9.3", in_codeblock3)
+
+    print ("National current reports (with cbd nr csv) done")
+
+elapsed_minutes = (time.clock() - start)/60
+elapsed_hours = (time.clock() - start)/3600
+
+print ("scripts finished - all good")
+print ("Outputs are here: " + str(workspace))
+print ("Total running time: " + str(elapsed_minutes) + " minutes (" + str(elapsed_hours) + " hours)")
+
+# clean up the worksapce a bit to remove intermediate subfolders
+arcpy.Delete_management(scratchworkspace)
+arcpy.Delete_management(sbafolder)
+
+
+
+
 # split by attribute (wdpa_iso3) to create an individual fc for each iso3
 arcpy.SplitByAttributes_analysis(r"in_memory\all_wdpa_polybuffpnt_nontransboundary",sbafolder, "WDPA_ISO3")
 
