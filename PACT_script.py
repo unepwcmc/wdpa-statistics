@@ -297,7 +297,7 @@ input_global = arcpy.AddGeometryAttributes_management("all_wdpa_polybuffpnt_unio
 # create a new feature dataset in the workspace geodatabase for the different sets of sites (whole set, only PAs and only OECMs)
 out_separate_feature_dataset = arcpy.CreateFeatureDataset_management(workspace,"separate_sets")
 
-# change the location of the workspace to represent the location of the new feature dataset that will contain the different sets of sites
+# change the location of the workspace to represent the location of the new feature dataset that will contain the different subsets of sites
 arcpy.env.workspace = str(out_separate_feature_dataset)
 arcpy.env.overwriteOutput = True
 
