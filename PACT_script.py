@@ -259,6 +259,12 @@ arcpy.DeleteField_management("all_wdpa_polybuffpnt_union_duplicates","MEAN_PA_DE
 # make a copy of the duplicates
 arcpy.Copy_management("all_wdpa_polybuffpnt_union_duplicates","all_wdpa_polybuffpnt_union_duplicates_flat")
 
+# select all polygons that have a WDPA_ISO3 of ABNJ - the script joins to it later to adjust tabular values for ABNJ reporting
+arcpy.Select_analysis("all_wdpa_polybuffpnt_union_duplicates","abnj_areas","WDPA_ISO3 = 'ABNJ'")
+
+# change the name of the WDPA_ISO3 field to something unique (abnj_iso3)
+arcpy.AlterField_management("abnj_areas","WDPA_ISO3","abnj_iso3")
+
 # delete all identical XYcos from the copied duplicates, we dont care about the values, just the geometreis and making it flat
 arcpy.DeleteIdentical_management("all_wdpa_polybuffpnt_union_duplicates_flat","XYco")
 
@@ -270,6 +276,15 @@ arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_duplicates_flat","ST
 
 # remove the field
 arcpy.DeleteField_management("all_wdpa_polybuffpnt_union_duplicates_flat","MIN_status_yr")
+
+# join the abnj_areas table to the flat area
+arcpy.JoinField_management("all_wdpa_polybuffpnt_union_duplicates_flat","XYco","abnj_areas","XYco","abnj_iso3")
+
+# select the polygons that have XYcos corresponding to ABNJ areas
+arcpy.SelectLayerByAttribute_management ("all_wdpa_polybuffpnt_union_duplicates_flat", "NEW_SELECTION", "abnj_iso3 = 'ABNJ'")
+
+# update the WDPA_ISO3 field so that all geographical areas that were ABNJ are so again (the delete identical can remove some areas which overlaps with non ABNJ areas which skews reporting
+arcpy.CalculateField_management("all_wdpa_polybuffpnt_union_duplicates_flat","WDPA_ISO3","!abnj_iso3!")
 
 # merge these site back into the unique geometries - creating a flat layer which has the whole WDPA schema populated still.
 ## If you want to do count analyses do it on the polybuffpnt, if you want to do spatial analyses, do it with this file.
@@ -770,7 +785,7 @@ for fc in arcpy.ListFeatureClasses():
     arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_percentage_pa_land_cover","updateValue(!pame_percentage_pa_land_cover!)","PYTHON_9.3", in_codeblock1)
     arcpy.CalculateField_management(national_summary_statistics_current_pivot_pame,"pame_percentage_pa_marine_cover","updateValue(!pame_percentage_pa_marine_cover!)","PYTHON_9.3", in_codeblock1)
 
-    # Join the current national pame table to the current national table
+    # join the current national pame table to the current national table
     arcpy.JoinField_management(national_summary_statistics_current_pivot,"iso3",national_summary_statistics_current_pivot_pame,"iso3",["pame_pa_land_area", "pame_pa_marine_area"])
     # update all pame fields so that <Null> is replaced by 0
     arcpy.CalculateField_management(national_summary_statistics_current_pivot,"pame_pa_marine_area","updateValue(!pame_pa_marine_area!)","PYTHON_9.3", in_codeblock1)
@@ -779,7 +794,7 @@ for fc in arcpy.ListFeatureClasses():
     # join the national current summary stats to the cbd nr csv from teh github supporting Github_supporting_files
     arcpy.JoinField_management(in_cbd_nr,"ISO3",national_summary_statistics_current_pivot,"iso3",["percentage_nr_land_cover","percentage_nr_marine_cover","nr_version","nr_report_url"])
 
-    define the codeblock3
+    # define codeblock3
 
     in_codeblock3 = """
     def updateValue(value):
