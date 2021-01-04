@@ -59,15 +59,19 @@ if restricted == True:
     in_restrict_shn_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\SHN_restricted_testing_for_model"
     # define location of restricted EST polygons
     in_restrict_cdda_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\Restricted_subset_model_testing.gdb\EST_restricted_testing_for_model"
-
+    # define location of restricted CAN polygons
+    in_restrict_can_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\CAN_restricted_PA_Dec2020"
+    # define location of restricted NZL polygons
+    in_restrict_nzl_poly = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\NZL_restricted_Aug2020"
+    
 print ("Stage 0.2: PAME sites and Green List sites")
 # define the list of protected areas that have pame assessments or green list assessments
-in_pame_sites = r"I:\_Monthly_Coverage_Stats_\0_Tools\1_Basemap\Restricted_Data.gdb\PAME_Sites"
-in_greenlist_sites = r"I:\_Monthly_Coverage_Stats_\2020\07_July_2020\green_list_july2020.csv"
+in_pame_sites = r"I:\_Monthly_Coverage_Stats_\0_Tools\5_PAME_inputs\PAME_data_2020_December.csv"
+in_greenlist_sites = r"I:\_Monthly_Coverage_Stats_\0_Tools\6_GreenList_inputs\Green List Sites Report - Oct 2020.csv"
 
 print ("Stage 0.3: OECM sites")
 # define the input for the oecm data
-in_oecmpoly = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\oecm_subset.gdb\oecm_subset"
+in_oecmpoly = r"I:\_Monthly_Coverage_Stats_\2020\11_November_2020\WDOECM_Nov2020_Public.gdb\WDOECM_poly_Nov2020"
 
 print ("Stage 0.4 PA sites")
 ### THIS SECTION WORKS BUT IS MASKED OUT WHILST WE ARE RUNNING TESTS ####
@@ -100,8 +104,8 @@ print ("Stage 0.4 PA sites")
 ##########################################################################
 
 # define the protected area point and polygon inputs [doing this manually or now]
-in_points = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\tiny_subset.gdb\CHL_Test_Pnt"
-in_polygons = r"I:\_Monthly_Coverage_Stats_\0_Tools\0_Test_Data\tiny_subset.gdb\BLM_model_testing_subset"
+in_points = r"I:\_Monthly_Coverage_Stats_\2020\11_November_2020\WDPA_Nov2020_Public.gdb\WDPA_point_Nov2020"
+in_polygons = r"I:\_Monthly_Coverage_Stats_\2020\11_November_2020\WDPA_Nov2020_Public.gdb\WDPA_poly_Nov2020"
 
 print ("Stage 0.5: Basemaps")
 ###### -  SCRIPTS TO AUTOMATE DOWNLOADING THE BASEMAPS - IGNORE FOR NOW####
@@ -141,7 +145,7 @@ handle.extractall(str(inputfolder))
 handle.close
 
 # rename the unzipped folder
-arcpy.Rename_management(r"C:\Users\EdwardL\Downloads\PACT_script\PACT_inputs\wdpa-statistics-master",r"C:\Users\EdwardL\Downloads\PACT_script\PACT_inputs\Github_supporting_files")
+arcpy.Rename_management(str(inputfolder) +"\\wdpa-statistics-master",str(inputfolder) + "\\Github_supporting_files")
 
 print ("Stage 0.7: Projection files & CBD national reports")
 
