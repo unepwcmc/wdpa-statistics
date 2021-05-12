@@ -1,7 +1,10 @@
-## A repository for analytical tools on the World Database on Protected Areas.
+## A repository for analytical tools on the World Database on Protected Areas (WDPA) and World Database on Other Effective Areas-Based Measures (WDOECM).
 
 ***
+#### Date: May 2021
+#### Note: It was hoped that this repo would be a more comprehensive and active space by mid 2021. The COVID pandemic has resulted in a delay for some workstreams at UNEP-WCMC and unfortunately improving our coding and analytical capabilities was one of them. The Esri geoprocessing model used to calculate global and national statistics using the WDPA and WDOECM is available in a zipped file above. There is the full intention to transition to a python script in the near future.
 
+***
 #### Author: Ed Lewis
 #### Date: October 2019
 #### Purpose: A centralised, comprehensive and public repository for WDPA analytical tools.
