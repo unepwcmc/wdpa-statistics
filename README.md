@@ -2,7 +2,7 @@
 
 ***
 #### Date: May 2021
-#### Note: It was hoped that this repo would be a more comprehensive and active space by mid 2021. The COVID pandemic has resulted in a delay for some workstreams at UNEP-WCMC and unfortunately improving our coding and analytical capabilities was one of them. The Esri geoprocessing model used to calculate global and national statistics using the WDPA and WDOECM is available in a zipped file above. There is the full intention to transition to a python script in the near future.
+#### Note: It was hoped that this repo would be a more comprehensive and active space by mid 2021. The COVID pandemic has resulted in a delay for some workstreams at UNEP-WCMC and unfortunately improving our coding and analytical capabilities for the WDPA and WDOECM was one of them. The Esri geoprocessing model used to calculate global and national statistics using the WDPA and WDOECM is available in a zipped file above. There is the full intention to transition to a python script in the near future. A python script version of the model is also available above, though it should still be considered a work in progress. If you would like to use either the script or the model then it would be well worth talking to edward.lewis@unep-wcmc to discuss the work.
 
 ***
 #### Author: Ed Lewis
